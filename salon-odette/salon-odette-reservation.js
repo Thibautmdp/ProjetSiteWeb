@@ -23,6 +23,10 @@
   - Calendrier réel : seuls les jours fermés (lundi, dimanche) et les jours
     passés sont grisés — l'ancienne version grisait des créneaux "complets"
     au hasard (fonction isSlotBooked), supprimée.
+  - Créneaux d'AUJOURD'HUI déjà passés dans la journée bloqués individuellement
+    (ex. il est 15h, le créneau de 9h ne doit plus être cliquable) — isPastDay
+    ne suffisait pas puisqu'il ne bloque qu'un jour entier, pas une heure
+    précise dans la journée en cours.
   - Créneaux réellement pris affichés barrés pour TOUT LE MONDE (pas
     seulement pour le client qui les a réservés) : buildCalendar() interroge
     la vue publique `booked_slots` (voir salon-odette-schema.sql), qui
@@ -38,6 +42,14 @@
     immédiatement après une réservation, une reprogrammation ou une annulation.
   - Sélecteur de coiffeur (3 boutons) au-dessus du calendrier — change le
     coiffeur actif redessine le calendrier avec SES créneaux à lui/elle.
+  - Jours/créneaux d'absence (2026-09-03) : un coiffeur peut se marquer
+    absent depuis son espace (salon-odette-coiffeur.js), soit toute une
+    journée (apparaît "Indisponible", comme un jour fermé), soit un seul
+    créneau précis (labelFromDateAndHeure() reconstruit le même libellé que
+    takenLabels — traité exactement comme un créneau déjà pris, sans
+    distinction visuelle avec un vrai rendez-vous). Le motif (congés,
+    maladie...) n'est jamais révélé au client — voir la vue publique
+    `absence_days` dans salon-odette-schema.sql.
 
   CE QU'IL RESTE À FAIRE (voir aussi la liste complète du projet)
   - La liste des 3 coiffeurs est encore codée en dur ici (COIFFEURS) — pas de
@@ -63,11 +75,18 @@
     créneau, adapte son titre/bouton selon le mode (réservation ou
     reprogrammation), affiche le coiffeur choisi, et redessine les panneaux
     de compte qu'elle contient.
-  - buildCalendar() : récupère la liste des créneaux pris CHEZ LE COIFFEUR
-    ACTUELLEMENT SÉLECTIONNÉ (booked_slots filtrée), puis appelle
-    renderCalendarGrid() pour dessiner le calendrier.
-  - renderCalendarGrid(takenLabels) : construit réellement la grille du
-    calendrier (jours, créneaux, état grisé/barré/cliquable).
+  - toDateKey(d) : convertit un objet Date JS en texte "AAAA-MM-JJ", pour le
+    comparer aux dates d'absence (colonne `date` de type Postgres date).
+  - labelFromDateAndHeure(dateStr, heure) : reconstruit un libellé de créneau
+    ("Mer 3 sept à 14h00") à partir d'une date Postgres et d'une heure — sert
+    à traiter une absence "créneau précis" comme un créneau déjà pris.
+  - buildCalendar() : récupère les créneaux pris ET les jours/créneaux
+    d'absence CHEZ LE COIFFEUR ACTUELLEMENT SÉLECTIONNÉ (booked_slots +
+    absence_days filtrées), puis appelle renderCalendarGrid() pour dessiner
+    le calendrier.
+  - renderCalendarGrid(takenLabels, absentDates) : construit réellement la
+    grille du calendrier (jours, créneaux, état grisé/barré/cliquable/fermé
+    pour cause d'absence).
   - startReschedule(booking) : point d'entrée appelé par salon-odette-client.js
     quand on clique "Reprogrammer" — bascule en mode reprogrammation, pré-
     sélectionne le coiffeur du rendez-vous d'origine, et redessine tout
@@ -189,22 +208,51 @@ function openBookingModal(label) {
   renderAllAccountPanels();
 }
 
+function toDateKey(d) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+// Reconstruit le libellé de créneau ("Mer 3 sept à 14h00") à partir d'une date "AAAA-MM-JJ"
+// (colonne Postgres date) et d'une heure — nécessaire pour comparer une absence "créneau
+// précis" (voir salon-odette-schema.sql) aux mêmes libellés que takenLabels.
+function labelFromDateAndHeure(dateStr, heure) {
+  var parts = dateStr.split('-');
+  var d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+  var dow = d.getDay();
+  return JOURS[dow].charAt(0).toUpperCase() + JOURS[dow].slice(1) + ' ' + d.getDate() + ' ' + MOIS[d.getMonth()] + ' à ' + heure;
+}
+
 function buildCalendar() {
   var calendarEl = document.getElementById('calendar');
   if (!calendarEl) return;
-  // "booked_slots" est une vue publique qui n'expose que le texte du créneau (label) et
-  // le coiffeur concerné, rien d'autre — voir salon-odette-schema.sql. On ne regarde que
-  // les créneaux pris CHEZ LE COIFFEUR ACTUELLEMENT SÉLECTIONNÉ : un horaire pris chez
-  // un autre coiffeur n'a aucune raison de griser celui-ci.
-  sb.from('booked_slots').select('label').eq('coiffeur', selectedCoiffeur).then(function (res) {
+  // "booked_slots" (label + coiffeur) et "absence_days" (date + heure + coiffeur) sont deux
+  // vues publiques qui n'exposent que le strict nécessaire pour griser le calendrier —
+  // jamais qui a réservé, ni pourquoi un coiffeur est absent (voir salon-odette-schema.sql).
+  // On ne regarde que ce qui concerne le COIFFEUR ACTUELLEMENT SÉLECTIONNÉ.
+  Promise.all([
+    sb.from('booked_slots').select('label').eq('coiffeur', selectedCoiffeur),
+    sb.from('absence_days').select('date, heure').eq('coiffeur', selectedCoiffeur)
+  ]).then(function (results) {
+    var slotsRes = results[0];
+    var absencesRes = results[1];
     var takenLabels = {};
-    (res.error ? [] : (res.data || [])).forEach(function (row) { takenLabels[row.label] = true; });
-    if (res.error) console.error(res.error);
-    renderCalendarGrid(takenLabels);
+    (slotsRes.error ? [] : (slotsRes.data || [])).forEach(function (row) { takenLabels[row.label] = true; });
+    if (slotsRes.error) console.error(slotsRes.error);
+    var absentDates = {};
+    (absencesRes.error ? [] : (absencesRes.data || [])).forEach(function (row) {
+      if (row.heure === 'journee') {
+        absentDates[row.date] = true;
+      } else {
+        // Une absence "créneau précis" se traite exactement comme un créneau déjà pris.
+        takenLabels[labelFromDateAndHeure(row.date, row.heure)] = true;
+      }
+    });
+    if (absencesRes.error) console.error(absencesRes.error);
+    renderCalendarGrid(takenLabels, absentDates);
   });
 }
 
-function renderCalendarGrid(takenLabels) {
+function renderCalendarGrid(takenLabels, absentDates) {
   var calendarEl = document.getElementById('calendar');
   if (!calendarEl) return;
   calendarEl.innerHTML = '';
@@ -234,19 +282,20 @@ function renderCalendarGrid(takenLabels) {
     var dow = d.getDay();
     var isClosedDay = dow === 0 || dow === 1;
     var isPastDay = d.getTime() < today.getTime();
+    var isAbsentDay = !!absentDates[toDateKey(d)];
 
     var dayCard = document.createElement('div');
-    dayCard.className = 'cal-day' + (isClosedDay || isPastDay ? ' closed' : '');
+    dayCard.className = 'cal-day' + (isClosedDay || isPastDay || isAbsentDay ? ' closed' : '');
 
     var head = document.createElement('div');
     head.className = 'cal-day-head';
     head.innerHTML = JOURS[dow] + '<strong>' + d.getDate() + ' ' + MOIS[d.getMonth()] + '</strong>';
     dayCard.appendChild(head);
 
-    if (isClosedDay || isPastDay) {
+    if (isClosedDay || isPastDay || isAbsentDay) {
       var closedLabel = document.createElement('div');
       closedLabel.className = 'cal-day-closed-label';
-      closedLabel.textContent = isPastDay ? 'Passé' : 'Fermé';
+      closedLabel.textContent = isPastDay ? 'Passé' : (isAbsentDay ? 'Indisponible' : 'Fermé');
       dayCard.appendChild(closedLabel);
       calendarEl.appendChild(dayCard);
       continue;
@@ -269,10 +318,15 @@ function renderCalendarGrid(takenLabels) {
       slotDate.setHours(parseInt(heure, 10), 0, 0, 0);
       var appointmentAtIso = slotDate.toISOString();
 
-      if (takenLabels[label]) {
+      // isPastDay ne bloque que les jours ENTIÈREMENT passés — aujourd'hui reste un jour
+      // "ouvert", mais ses créneaux déjà passés dans la journée (ex. il est 15h, le
+      // créneau de 9h) doivent quand même être bloqués individuellement.
+      var isPastSlot = slotDate.getTime() < Date.now();
+
+      if (takenLabels[label] || isPastSlot) {
         btn.classList.add('booked');
         btn.disabled = true;
-        btn.setAttribute('aria-label', label + ' — complet');
+        btn.setAttribute('aria-label', label + (isPastSlot ? ' — passé' : ' — complet'));
       } else {
         btn.setAttribute('aria-label', label + ' — disponible');
         btn.addEventListener('click', function () {

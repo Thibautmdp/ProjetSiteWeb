@@ -114,8 +114,48 @@
     border-radius: 3px; border: 1px solid var(--border);
   }
   .booking-list-item .presta { color: var(--encre-soft); font-size: 0.85rem; display: block; margin-top: 2px; }
+  .booking-action-btn { display: block; background: none; border: none; padding: 0; font: inherit; font-size: 0.82rem; color: var(--encre-soft); text-decoration: underline; cursor: pointer; }
+  .booking-action-btn:hover { color: var(--bordeaux); }
+
+  /* ---------- calendrier de planning (même principe que le calendrier client) ---------- */
+  .calendar-nav { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 24px; flex-wrap: wrap; }
+  .calendar-nav .btn { padding: 9px 18px; font-size: 0.84rem; }
+  .calendar-wrap { margin-top: 18px; overflow-x: auto; padding-bottom: 10px; }
+  .calendar { display: grid; grid-auto-flow: column; grid-auto-columns: 138px; gap: 12px; width: max-content; }
+  .cal-day { background: var(--ivoire); border: 1px solid var(--border); border-radius: 4px; padding: 14px; box-shadow: var(--shadow); }
+  .cal-day-head { font-family: 'Space Mono', monospace; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--encre-soft); margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border); text-align: center; line-height: 1.5; }
+  .cal-day-head strong { display: block; font-size: 0.88rem; color: var(--encre); font-family: 'Karla', sans-serif; text-transform: none; letter-spacing: 0; }
+  .cal-slots { display: flex; flex-direction: column; gap: 7px; }
+  .cal-slot { border: 1px solid var(--border); border-radius: 3px; padding: 7px; font-size: 0.78rem; text-align: center; color: var(--encre-soft); font-family: 'Space Mono', monospace; line-height: 1.4; }
+  .cal-slot.busy { background: var(--bordeaux); color: var(--bordeaux-contrast); border-color: var(--bordeaux); font-weight: 600; }
+  .cal-slot.busy.no-show { background: transparent; color: var(--encre-soft); border-color: var(--bordeaux); text-decoration: line-through; opacity: 0.7; }
+  .cal-slot.absent-slot { background: var(--ivoire-surface); color: var(--encre-soft); border-style: dashed; opacity: 0.7; }
+  .cal-day.closed { opacity: 0.45; }
+  .cal-day-closed-label { text-align: center; font-family: 'Space Mono', monospace; font-size: 0.78rem; color: var(--encre-soft); padding: 16px 0; }
 
   #statsChart svg text { font-family: 'Space Mono', monospace; }
+
+  /* ---------- espace propriétaire (staff.is_owner) ---------- */
+  .owner-badge {
+    display: inline-block; font-family: 'Space Mono', monospace; font-size: 0.62rem;
+    text-transform: uppercase; letter-spacing: 0.06em; vertical-align: middle;
+    background: var(--laiton); color: var(--laiton-contrast); border-radius: 999px;
+    padding: 4px 10px; margin-left: 8px;
+  }
+  /* Onglets + sélecteurs (Statistiques/Clients/Plannings, scope salon-entier/coiffeur) */
+  .chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip-btn {
+    background: var(--ivoire-surface); border: 1px solid var(--border); color: var(--encre);
+    border-radius: 999px; padding: 8px 18px; font-size: 0.84rem; font-weight: 600; cursor: pointer;
+  }
+  .chip-btn:hover { background: var(--ivoire); }
+  .chip-btn.active { background: var(--bordeaux); color: var(--bordeaux-contrast); border-color: var(--bordeaux); }
+
+  .client-table-wrap { margin-top: 16px; overflow-x: auto; }
+  .client-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  .client-table th, .client-table td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  .client-table th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--encre-soft); font-weight: 600; }
+  .client-table tbody tr:hover { background: var(--ivoire-surface); }
 </style>
 
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@0,500;0,600;1,500&family=Karla:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">

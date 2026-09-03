@@ -62,7 +62,13 @@
 
 var SUPABASE_URL = 'https://vyqbbqeskzyromoyxrff.supabase.co';
 var SUPABASE_KEY = 'sb_publishable_zR0jfkgIXbfDrLPLxurx7w_QJIDW1t6';
-var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// persistSession: false — pendant qu'on teste plusieurs comptes, le site ne doit PAS se
+// souvenir de la connexion d'une ouverture à l'autre (sinon on rouvre la page et on
+// retombe sur le dernier compte utilisé, ce qui prête à confusion en plein test). À
+// REMETTRE à true (ou supprimer cette option, true est la valeur par défaut) le jour où
+// le site sera montré à de vrais clients — eux voudront rester connectés d'une visite à
+// l'autre, comme sur n'importe quel site.
+var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } });
 
 var currentSession = null;
 

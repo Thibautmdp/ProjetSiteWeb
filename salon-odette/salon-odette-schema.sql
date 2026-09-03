@@ -49,6 +49,14 @@ alter table public.bookings add column if not exists coiffeur text;
 alter table public.bookings drop constraint if exists bookings_coiffeur_check;
 alter table public.bookings add constraint bookings_coiffeur_check check (coiffeur in ('Odette', 'Karim', 'Lina'));
 
+-- Suivi de présence : le coiffeur valide, une fois le rendez-vous passé, si le client est
+-- venu ou pas — voir salon-odette-coiffeur.js. 'pending' = pas encore validé (par défaut,
+-- y compris pour les RDV à venir). Un no_show est exclu du chiffre d'affaires estimé et
+-- des statistiques de prestations les plus demandées (voir renderDashboard côté coiffeur).
+alter table public.bookings add column if not exists status text not null default 'pending';
+alter table public.bookings drop constraint if exists bookings_status_check;
+alter table public.bookings add constraint bookings_status_check check (status in ('pending', 'attended', 'no_show'));
+
 alter table public.bookings enable row level security;
 
 drop policy if exists "bookings_select_own" on public.bookings;
@@ -140,6 +148,28 @@ create policy "bookings_select_own" on public.bookings
     or exists (select 1 from public.staff where staff.id = auth.uid() and staff.nom = bookings.coiffeur)
   );
 
+-- Un coiffeur peut aussi modifier ses propres rendez-vous assignés (pour valider le statut
+-- venu/absent) — en plus d'un client qui modifie toujours les siens (reprogrammation).
+drop policy if exists "bookings_update_own" on public.bookings;
+create policy "bookings_update_own" on public.bookings
+  for update using (
+    auth.uid() = user_id
+    or exists (select 1 from public.staff where staff.id = auth.uid() and staff.nom = bookings.coiffeur)
+  )
+  with check (
+    auth.uid() = user_id
+    or exists (select 1 from public.staff where staff.id = auth.uid() and staff.nom = bookings.coiffeur)
+  );
+
+-- Un coiffeur peut aussi annuler (supprimer) ses propres rendez-vous assignés — en plus
+-- d'un client qui annule toujours les siens.
+drop policy if exists "bookings_delete_own" on public.bookings;
+create policy "bookings_delete_own" on public.bookings
+  for delete using (
+    auth.uid() = user_id
+    or exists (select 1 from public.staff where staff.id = auth.uid() and staff.nom = bookings.coiffeur)
+  );
+
 -- Un coiffeur voit le prénom/téléphone d'un client SEULEMENT si ce client a un
 -- rendez-vous avec lui — pas celui de n'importe quel client du salon.
 drop policy if exists "profiles_select_staff" on public.profiles;
@@ -151,3 +181,121 @@ create policy "profiles_select_staff" on public.profiles
       where b.user_id = profiles.id and b.coiffeur = s.nom
     )
   );
+
+-- ============================================================================
+-- Absences des coiffeurs (congés, maladie, formation, imprévu...)
+-- ============================================================================
+-- Une ligne = un coiffeur indisponible soit toute une journée (heure = 'journee',
+-- la valeur par défaut), soit un seul créneau précis ce jour-là (heure = '9h00',
+-- '14h00', etc. — même valeurs que HEURES côté JS). `motif` reste privé (voir la
+-- vue publique plus bas qui ne l'expose jamais).
+create table if not exists public.absences (
+  id uuid primary key default gen_random_uuid(),
+  coiffeur text not null check (coiffeur in ('Odette', 'Karim', 'Lina')),
+  date date not null,
+  motif text,
+  created_at timestamptz not null default now(),
+  unique (coiffeur, date)
+);
+
+alter table public.absences add column if not exists heure text not null default 'journee';
+alter table public.absences drop constraint if exists absences_heure_check;
+alter table public.absences add constraint absences_heure_check
+  check (heure in ('journee', '9h00', '10h00', '11h00', '14h00', '15h00', '16h00', '17h00'));
+
+-- Remplace l'ancienne contrainte "un coiffeur, une date" par "un coiffeur, une date, un
+-- créneau (ou 'journee')" — permet plusieurs absences le même jour si ce sont des
+-- créneaux différents (mais toujours une seule absence "journee" par jour).
+alter table public.absences drop constraint if exists absences_coiffeur_date_key;
+alter table public.absences drop constraint if exists absences_coiffeur_date_heure_key;
+alter table public.absences add constraint absences_coiffeur_date_heure_key unique (coiffeur, date, heure);
+
+alter table public.absences enable row level security;
+
+-- Un coiffeur ne gère (voit/crée/supprime) que SES PROPRES absences.
+drop policy if exists "absences_select_own" on public.absences;
+create policy "absences_select_own" on public.absences
+  for select using (exists (select 1 from public.staff where staff.id = auth.uid() and staff.nom = absences.coiffeur));
+
+drop policy if exists "absences_insert_own" on public.absences;
+create policy "absences_insert_own" on public.absences
+  for insert with check (exists (select 1 from public.staff where staff.id = auth.uid() and staff.nom = absences.coiffeur));
+
+drop policy if exists "absences_delete_own" on public.absences;
+create policy "absences_delete_own" on public.absences
+  for delete using (exists (select 1 from public.staff where staff.id = auth.uid() and staff.nom = absences.coiffeur));
+
+-- Vue publique : coiffeur + date + heure ('journee' ou un créneau précis), JAMAIS le
+-- motif (une raison comme "maladie" reste privée) — sert au calendrier client à fermer
+-- la journée entière OU juste ce créneau chez ce coiffeur précis, sans révéler pourquoi.
+create or replace view public.absence_days as
+  select coiffeur, date, heure from public.absences;
+
+grant select on public.absence_days to anon, authenticated;
+
+-- ============================================================================
+-- Historique des annulations (pour les statistiques coiffeur)
+-- ============================================================================
+-- Annuler un rendez-vous supprime toujours la ligne dans `bookings` (le
+-- créneau redevient immédiatement libre) — cette table ne sert qu'à garder une
+-- trace du fait qu'une annulation a eu lieu, pour pouvoir la compter plus
+-- tard. Pas d'identité client ici, juste ce qui est utile aux statistiques.
+create table if not exists public.cancellations (
+  id uuid primary key default gen_random_uuid(),
+  coiffeur text not null check (coiffeur in ('Odette', 'Karim', 'Lina')),
+  prestation text,
+  appointment_at timestamptz,
+  cancelled_at timestamptz not null default now(),
+  cancelled_by uuid references auth.users(id) on delete set null
+);
+
+alter table public.cancellations enable row level security;
+
+-- Un client peut enregistrer l'annulation d'un rendez-vous qui était le sien.
+drop policy if exists "cancellations_insert_own" on public.cancellations;
+create policy "cancellations_insert_own" on public.cancellations
+  for insert with check (auth.uid() = cancelled_by);
+
+-- Un coiffeur voit les annulations qui LE concernent (pas celles des autres
+-- coiffeurs, et sans savoir quel client a annulé).
+drop policy if exists "cancellations_select_staff" on public.cancellations;
+create policy "cancellations_select_staff" on public.cancellations
+  for select using (exists (select 1 from public.staff where staff.id = auth.uid() and staff.nom = cancellations.coiffeur));
+
+-- ============================================================================
+-- Espace propriétaire (Odette voit tout le salon, pas seulement ses propres RDV)
+-- ============================================================================
+-- Un propriétaire se connecte EXACTEMENT comme n'importe quel coiffeur (même
+-- formulaire, même table `staff`) — la seule différence est ce booléen. Pas
+-- d'interface pour le régler soi-même pour l'instant : à la main dans Supabase,
+-- ex. pour donner les droits à Odette :
+--   update public.staff set is_owner = true where nom = 'Odette';
+alter table public.staff add column if not exists is_owner boolean not null default false;
+update public.staff set is_owner = true where nom = 'Odette';
+
+-- Un propriétaire voit TOUS les rendez-vous du salon, tous coiffeurs confondus
+-- (en plus des règles déjà en place : client = les siens, coiffeur = les siens).
+drop policy if exists "bookings_select_owner" on public.bookings;
+create policy "bookings_select_owner" on public.bookings
+  for select using (exists (select 1 from public.staff where staff.id = auth.uid() and staff.is_owner));
+
+-- Un propriétaire voit TOUS les profils clients (prénom/téléphone/email), pas
+-- seulement ceux qui ont un rendez-vous avec lui — nécessaire pour la liste
+-- complète des clients du salon dans l'espace propriétaire.
+drop policy if exists "profiles_select_owner" on public.profiles;
+create policy "profiles_select_owner" on public.profiles
+  for select using (exists (select 1 from public.staff where staff.id = auth.uid() and staff.is_owner));
+
+-- Un propriétaire voit aussi les annulations de TOUS les coiffeurs (statistiques
+-- salon entier), pas seulement les siennes.
+drop policy if exists "cancellations_select_owner" on public.cancellations;
+create policy "cancellations_select_owner" on public.cancellations
+  for select using (exists (select 1 from public.staff where staff.id = auth.uid() and staff.is_owner));
+
+-- Un propriétaire voit aussi les absences de TOUTE l'équipe (onglet "Plannings &
+-- organisation" de l'espace propriétaire — planning de n'importe quel coiffeur, y compris
+-- le motif de chaque absence, utile pour elle en tant que responsable), pas seulement les
+-- siennes.
+drop policy if exists "absences_select_owner" on public.absences;
+create policy "absences_select_owner" on public.absences
+  for select using (exists (select 1 from public.staff where staff.id = auth.uid() and staff.is_owner));

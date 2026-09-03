@@ -17,7 +17,11 @@
   CE QUI A ÉTÉ FAIT (2026-09-02 / 2026-09-03)
   - "Modifier mes infos" : formulaire pré-rempli, enregistre dans `profiles`.
   - Liste des rendez-vous À VENIR avec, pour chacun :
-      - "Annuler" → supprime la ligne dans `bookings` (avec confirmation).
+      - "Annuler" → supprime la ligne dans `bookings` (avec confirmation),
+        et enregistre une trace dans `cancellations` (coiffeur/prestation/
+        date, jamais l'identité du client) pour les statistiques du coiffeur
+        concerné — voir salon-odette-coiffeur.js. Le créneau redevient
+        immédiatement libre, seule la trace persiste.
       - "Reprogrammer" → passe la main à salon-odette-reservation.js pour
         choisir un nouveau créneau, qui viendra modifier ce même rendez-vous
         au lieu d'en créer un nouveau.
@@ -203,8 +207,21 @@ function renderClientAccount(panel, ids, isModalPanel, prefix) {
     btn.addEventListener('click', function () {
       if (action === 'cancel') {
         if (!window.confirm('Annuler ce rendez-vous ?')) return;
+        var cancelledBooking = currentBookings.filter(function (b) { return b.id === bookingId; })[0];
         sb.from('bookings').delete().eq('id', bookingId).then(function (res) {
           if (res.error) { window.alert('Erreur : ' + res.error.message); return; }
+          // Trace de l'annulation pour les statistiques coiffeur (voir salon-odette-coiffeur.js)
+          // — best-effort, on ne bloque pas l'annulation si cet enregistrement échoue.
+          if (cancelledBooking && cancelledBooking.coiffeur) {
+            sb.from('cancellations').insert({
+              coiffeur: cancelledBooking.coiffeur,
+              prestation: cancelledBooking.prestation,
+              appointment_at: cancelledBooking.appointment_at,
+              cancelled_by: currentSession.user.id
+            }).then(function (cancelRes) {
+              if (cancelRes.error) console.error(cancelRes.error);
+            });
+          }
           refreshAndRenderAll();
           buildCalendar();
         });
