@@ -1,0 +1,594 @@
+<!--
+  Site de démonstration — salon de coiffure fictif ("Salon Odette"), créé comme
+  exemple de réalisation à montrer à des prospects. Nom, adresse, téléphone,
+  email et équipe sont volontairement fictifs (téléphone au format placeholder
+  standard 01 23 45 67 89, email en .example — domaine réservé qui ne peut
+  jamais délivrer de vrai courrier). Ne pas remplacer par de vraies coordonnées :
+  ce fichier reste un modèle de démonstration, pas un vrai site client.
+-->
+<title>Salon Odette</title>
+<style>
+  :root {
+    --ivoire: #F2EAE1;
+    --ivoire-surface: #E9DFD3;
+    --encre: #1B1512;
+    --encre-soft: #5B5049;
+    --bordeaux: #6C2437;
+    --bordeaux-contrast: #F2EAE1;
+    --laiton: #A9814D;
+    --laiton-contrast: #1B1512;
+    --border: rgba(27,21,18,0.14);
+    --shadow: 0 1px 2px rgba(27,21,18,0.06), 0 10px 28px rgba(27,21,18,0.08);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ivoire: #17120F;
+      --ivoire-surface: #211A16;
+      --encre: #F2EAE1;
+      --encre-soft: #B9AEA5;
+      --bordeaux: #C06A80;
+      --bordeaux-contrast: #1B1512;
+      --laiton: #D8B37E;
+      --laiton-contrast: #1B1512;
+      --border: rgba(242,234,225,0.14);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ivoire: #17120F;
+    --ivoire-surface: #211A16;
+    --encre: #F2EAE1;
+    --encre-soft: #B9AEA5;
+    --bordeaux: #C06A80;
+    --bordeaux-contrast: #1B1512;
+    --laiton: #D8B37E;
+    --laiton-contrast: #1B1512;
+    --border: rgba(242,234,225,0.14);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--ivoire);
+    color: var(--encre);
+    font-family: 'Karla', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3 {
+    font-family: 'Bodoni Moda', Georgia, 'Times New Roman', serif;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+    margin: 0;
+    color: var(--encre);
+  }
+
+  .mono { font-family: 'Space Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+
+  a { color: inherit; }
+  p { margin: 0; }
+  ul { margin: 0; padding: 0; list-style: none; }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--laiton); outline-offset: 3px; }
+
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 24px; }
+  .prose { max-width: 620px; }
+  section { padding: 100px 0; }
+  @media (max-width: 640px) { section { padding: 64px 0; } }
+
+  .eyebrow {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--laiton);
+    display: block;
+    margin-bottom: 16px;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 13px 26px;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.92rem;
+    text-decoration: none;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: transform 0.15s ease, background 0.15s ease;
+  }
+  .btn:hover { transform: translateY(-1px); }
+  .btn-primary { background: var(--bordeaux); color: var(--bordeaux-contrast); }
+  .btn-primary:hover { background: color-mix(in srgb, var(--bordeaux) 85%, black); }
+  .btn-ghost { background: transparent; color: var(--encre); border-color: var(--border); }
+  .btn-ghost:hover { background: var(--ivoire-surface); }
+
+  /* ---------- header ---------- */
+  header.site {
+    position: sticky; top: 0; z-index: 20;
+    background: color-mix(in srgb, var(--ivoire) 88%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+  }
+  .header-inner { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 24px; }
+  .brand { font-family: 'Bodoni Moda', serif; font-size: 1.3rem; font-style: italic; text-decoration: none; }
+  nav.primary { display: flex; align-items: center; gap: 28px; }
+  .nav-links { display: flex; gap: 24px; }
+  .nav-links a { text-decoration: none; font-size: 0.92rem; color: var(--encre-soft); }
+  .nav-links a:hover { color: var(--encre); }
+  @media (max-width: 760px) { .nav-links { display: none; } }
+  @media (max-width: 420px) {
+    .header-inner { padding: 12px 16px; }
+    .brand { font-size: 1.05rem; }
+    .btn-primary { padding: 9px 16px; font-size: 0.82rem; white-space: nowrap; }
+  }
+
+  /* ---------- hero ---------- */
+  .hero { padding: 88px 0 100px; }
+  .hero-grid { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 56px; align-items: center; }
+  @media (max-width: 860px) { .hero-grid { grid-template-columns: 1fr; } .hero { padding: 56px 0 64px; } }
+  .hero h1 { font-size: clamp(2.3rem, 5vw, 3.6rem); line-height: 1.05; font-style: italic; }
+  .hero .sub { margin-top: 22px; font-size: 1.12rem; color: var(--encre-soft); max-width: 44ch; }
+  .hero .cta-row { margin-top: 34px; display: flex; gap: 18px; flex-wrap: wrap; align-items: center; }
+  .hero .meta { margin-top: 26px; font-size: 0.86rem; color: var(--encre-soft); }
+  .mirror { width: 100%; height: auto; }
+
+  /* ---------- ink band ---------- */
+  .ink-band { background: var(--encre); color: var(--ivoire); }
+  .ink-band .eyebrow { color: var(--laiton); }
+  .ink-band h2 { color: var(--ivoire); }
+  .ink-band p { color: color-mix(in srgb, var(--ivoire) 75%, transparent); }
+  .ink-band .btn-ghost { color: var(--ivoire); border-color: color-mix(in srgb, var(--ivoire) 32%, transparent); }
+  .ink-band .btn-ghost:hover { background: color-mix(in srgb, var(--ivoire) 12%, transparent); }
+  .ink-band .btn-ghost[disabled] { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+
+  /* ---------- about ---------- */
+  .about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; }
+  @media (max-width: 780px) { .about-grid { grid-template-columns: 1fr; } }
+  .stat-row { display: flex; gap: 36px; margin-top: 32px; flex-wrap: wrap; }
+  .stat .num { font-family: 'Bodoni Moda', serif; font-style: italic; font-size: 2.1rem; color: var(--laiton); }
+  .stat .label { font-size: 0.82rem; color: color-mix(in srgb, var(--ivoire) 70%, transparent); margin-top: 4px; }
+
+  /* ---------- prestations (menu) ---------- */
+  .menu-groups { margin-top: 52px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 44px; }
+  @media (max-width: 860px) { .menu-groups { grid-template-columns: 1fr; gap: 40px; } }
+  .menu-group h3 { font-size: 1.15rem; font-style: italic; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+  .menu-list { display: flex; flex-direction: column; gap: 14px; }
+  .menu-item { display: flex; align-items: flex-end; gap: 8px; }
+  .menu-item .item { font-size: 0.96rem; flex-shrink: 0; }
+  .menu-item .dots { flex: 1; border-bottom: 1px dotted var(--border); margin-bottom: 5px; }
+  .menu-item .price { flex-shrink: 0; font-size: 0.94rem; color: var(--bordeaux); font-weight: 700; }
+  .menu-note { margin-top: 32px; font-size: 0.86rem; color: var(--encre-soft); }
+
+  /* ---------- team ---------- */
+  .team-grid { margin-top: 48px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
+  @media (max-width: 780px) { .team-grid { grid-template-columns: 1fr; } }
+  .team-card { text-align: center; }
+  .avatar {
+    width: 84px; height: 84px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Bodoni Moda', serif; font-style: italic; font-size: 1.6rem;
+    margin: 0 auto 18px; color: var(--laiton-contrast);
+  }
+  .team-card h3 { font-size: 1.05rem; }
+  .team-card .role { font-size: 0.86rem; color: var(--encre-soft); margin-top: 4px; }
+
+  /* ---------- horaires / contact ---------- */
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: start; }
+  @media (max-width: 780px) { .info-grid { grid-template-columns: 1fr; } }
+  .hours-table { display: flex; flex-direction: column; gap: 10px; margin-top: 24px; }
+  .hours-row { display: flex; justify-content: space-between; font-size: 0.96rem; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+  .hours-row .day { color: var(--encre-soft); }
+  .contact-card { background: var(--ivoire-surface); border: 1px solid var(--border); border-radius: 4px; padding: 30px; box-shadow: var(--shadow); }
+  .contact-card .row { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; font-size: 0.98rem; }
+  .contact-card svg { width: 19px; height: 19px; color: var(--bordeaux); flex-shrink: 0; }
+  .contact-card a { text-decoration: none; }
+
+  /* ---------- réservation ---------- */
+  .booking-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; margin-top: 44px; align-items: start; }
+  @media (max-width: 860px) { .booking-grid { grid-template-columns: 1fr; } }
+  .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; }
+  .field label { font-size: 0.84rem; font-weight: 600; }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 480px) { .field-row { grid-template-columns: 1fr; } }
+  .field input, .field select, .field textarea {
+    font: inherit; font-size: 0.95rem; padding: 11px 12px; border-radius: 3px;
+    border: 1px solid var(--border); background: var(--ivoire); color: var(--encre);
+  }
+  .field textarea { resize: vertical; min-height: 90px; }
+  .field input:focus, .field select:focus, .field textarea:focus { outline: 2px solid var(--laiton); outline-offset: 1px; }
+  .form-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 6px; align-items: center; }
+  .form-status { margin-top: 16px; font-size: 0.88rem; padding: 12px 14px; border-radius: 3px; background: var(--ivoire-surface); border: 1px solid var(--border); display: none; }
+  .form-status.show { display: block; }
+  .booking-note { background: var(--ivoire-surface); border: 1px solid var(--border); border-radius: 4px; padding: 28px; }
+  .booking-note h3 { font-size: 1.05rem; margin-bottom: 12px; }
+  .booking-note p { color: var(--encre-soft); font-size: 0.92rem; }
+
+  /* ---------- footer ---------- */
+  footer.site { background: var(--encre); color: color-mix(in srgb, var(--ivoire) 85%, transparent); padding: 48px 0 30px; }
+  .footer-grid { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 32px; padding-bottom: 28px; border-bottom: 1px solid color-mix(in srgb, var(--ivoire) 18%, transparent); }
+  @media (max-width: 700px) { .footer-grid { grid-template-columns: 1fr; } }
+  .footer-grid h4 { font-family: 'Space Mono', monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--laiton); margin-bottom: 14px; }
+  .footer-grid p, .footer-grid a { font-size: 0.88rem; color: color-mix(in srgb, var(--ivoire) 75%, transparent); display: block; text-decoration: none; margin-bottom: 8px; }
+  .footer-grid a:hover { color: var(--ivoire); }
+  .footer-bottom { padding-top: 22px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; font-size: 0.78rem; color: color-mix(in srgb, var(--ivoire) 55%, transparent); }
+  .credit { font-size: 0.78rem; color: color-mix(in srgb, var(--ivoire) 55%, transparent); }
+  .credit a { color: var(--laiton); text-decoration: underline; }
+
+  /* ---------- calendrier de créneaux ---------- */
+  .coiffeur-selector { display: flex; gap: 12px; margin-top: 32px; flex-wrap: wrap; }
+  .coiffeur-selector .btn { padding: 10px 20px; }
+  .calendar-nav { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 24px; flex-wrap: wrap; }
+  .calendar-nav .week-label { font-family: 'Space Mono', monospace; font-size: 0.85rem; letter-spacing: 0.03em; }
+  .calendar-nav .btn { padding: 9px 18px; font-size: 0.84rem; }
+  .calendar-wrap { margin-top: 18px; overflow-x: auto; padding-bottom: 10px; }
+  .calendar { display: grid; grid-auto-flow: column; grid-auto-columns: 148px; gap: 14px; width: max-content; }
+  .cal-day { background: var(--ivoire); border: 1px solid var(--border); border-radius: 4px; padding: 16px; box-shadow: var(--shadow); }
+  .cal-day-head { font-family: 'Space Mono', monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--encre-soft); margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border); text-align: center; line-height: 1.5; }
+  .cal-day-head strong { display: block; font-size: 0.9rem; color: var(--encre); font-family: 'Karla', sans-serif; text-transform: none; letter-spacing: 0; }
+  .cal-slots { display: flex; flex-direction: column; gap: 8px; }
+  .cal-slot {
+    border: 1px solid var(--border); border-radius: 3px; padding: 8px; font-size: 0.86rem; text-align: center;
+    background: transparent; color: var(--encre); cursor: pointer;
+    font-family: 'Space Mono', monospace;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  }
+  .cal-slot:hover:not(.booked) { border-color: var(--bordeaux); }
+  .cal-slot.selected { background: var(--bordeaux); color: var(--bordeaux-contrast); border-color: var(--bordeaux); }
+  .cal-slot.booked { color: var(--encre-soft); text-decoration: line-through; cursor: not-allowed; opacity: 0.5; }
+  .cal-day.closed { opacity: 0.45; }
+  .cal-day-closed-label { text-align: center; font-family: 'Space Mono', monospace; font-size: 0.8rem; color: var(--encre-soft); padding: 18px 0; }
+  .calendar-legend { display: flex; gap: 22px; margin-top: 16px; font-size: 0.82rem; color: color-mix(in srgb, var(--ivoire) 75%, transparent); align-items: center; flex-wrap: wrap; }
+  .calendar-legend .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 7px; vertical-align: middle; }
+  .calendar-caption { margin-top: 10px; font-size: 0.8rem; color: color-mix(in srgb, var(--ivoire) 55%, transparent); }
+
+  /* ---------- fenêtre modale de réservation ---------- */
+  .modal-backdrop {
+    position: fixed; inset: 0; z-index: 100;
+    background: rgba(15,10,8,0.6);
+    padding: 24px;
+  }
+  .modal-backdrop:not([hidden]) { display: flex; align-items: center; justify-content: center; }
+  .modal-dialog {
+    position: relative;
+    background: var(--ivoire); color: var(--encre);
+    border-radius: 6px; padding: 32px;
+    width: 100%; max-width: 500px; max-height: 88vh; overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+  }
+  .modal-dialog h3 { font-size: 1.15rem; padding-right: 24px; }
+  .modal-dialog .slot-label { margin-top: 6px; color: var(--bordeaux); font-weight: 700; }
+  .modal-dialog .field { margin-top: 16px; margin-bottom: 0; }
+  .modal-close {
+    position: absolute; top: 18px; right: 18px;
+    width: 30px; height: 30px; border-radius: 50%;
+    border: 1px solid var(--border); background: transparent; color: var(--encre);
+    font-size: 1.2rem; line-height: 1; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .modal-close:hover { background: var(--ivoire-surface); }
+
+  .account-panel { margin-top: 22px; }
+  .client-space-card {
+    margin-top: 40px; max-width: 480px;
+    background: var(--ivoire); border: 1px solid var(--border); border-radius: 4px;
+    padding: 30px; box-shadow: var(--shadow);
+  }
+  .account-panel h3 { font-size: 1.02rem; margin-bottom: 4px; padding-right: 0; }
+  .account-panel .account-sub { font-size: 0.85rem; color: var(--encre-soft); margin-bottom: 18px; }
+  .account-panel .profile-row { display: flex; justify-content: space-between; align-items: baseline; font-size: 0.94rem; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .account-panel .profile-row .label { color: var(--encre-soft); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; font-family: 'Space Mono', monospace; }
+  .booking-list { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+  .booking-list-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 0.92rem; padding: 12px 14px; background: var(--ivoire-surface); border-radius: 3px; border: 1px solid var(--border); }
+  .booking-list-item .presta { color: var(--encre-soft); font-size: 0.85rem; }
+  .booking-actions { display: flex; gap: 14px; flex-shrink: 0; }
+  .booking-action-btn { background: none; border: none; padding: 0; font: inherit; font-size: 0.82rem; color: var(--encre-soft); text-decoration: underline; cursor: pointer; }
+  .booking-action-btn:hover { color: var(--bordeaux); }
+  .account-empty { font-size: 0.9rem; color: var(--encre-soft); margin-top: 14px; }
+  .history-details summary { cursor: pointer; font-size: 0.9rem; font-weight: 600; list-style: none; }
+  .history-details summary::-webkit-details-marker { display: none; }
+  .history-details summary::before { content: "▸ "; color: var(--laiton); }
+  .history-details[open] summary::before { content: "▾ "; }
+  .history-details .booking-list-item { opacity: 0.7; }
+  .login-alert {
+    margin-top: 14px; padding: 12px 14px; border-radius: 3px;
+    background: color-mix(in srgb, var(--bordeaux) 12%, var(--ivoire-surface));
+    border-left: 3px solid var(--bordeaux);
+    color: var(--encre); font-size: 0.88rem;
+  }
+  .account-forget { margin-top: 20px; background: none; border: none; padding: 0; font-size: 0.82rem; color: var(--encre-soft); text-decoration: underline; cursor: pointer; }
+  .account-caption { margin-top: 18px; font-size: 0.78rem; color: var(--encre-soft); border-top: 1px solid var(--border); padding-top: 16px; }
+
+  .reveal { opacity: 0; transform: translateY(22px); transition: opacity 0.6s ease, transform 0.6s ease; }
+  .reveal.is-visible { opacity: 1; transform: translateY(0); }
+  @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } }
+</style>
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@0,500;0,600;1,500&family=Karla:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
+
+<header class="site">
+  <div class="header-inner">
+    <a class="brand" href="#top">Salon Odette</a>
+    <nav class="primary">
+      <div class="nav-links">
+        <a href="#prestations">Prestations</a>
+        <a href="#equipe">L'équipe</a>
+        <a href="#horaires">Horaires</a>
+        <a href="#compte">Espace client</a>
+        <a href="salon-odette-espace-coiffeur.html">Espace coiffeur</a>
+      </div>
+      <a class="btn btn-primary" href="#reserver">Prendre rendez-vous</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <span class="eyebrow">Salon de coiffure — Fontenay-sous-Bois</span>
+        <h1>Une coupe, un instant pour vous</h1>
+        <p class="sub">Salon Odette accueille chaque client comme on reçoit chez soi — un geste précis, une écoute réelle, et un résultat qui vous ressemble.</p>
+        <div class="cta-row">
+          <a class="btn btn-primary" href="#reserver">Prendre rendez-vous</a>
+          <a class="btn btn-ghost" href="#prestations">Voir les prestations</a>
+        </div>
+        <p class="meta">12 rue des Acacias, Fontenay-sous-Bois · Mar–Sam 9h–19h</p>
+      </div>
+      <svg class="mirror" viewBox="0 0 360 380" role="img" aria-label="Illustration d'un miroir de salon">
+        <ellipse cx="180" cy="170" rx="120" ry="145" fill="var(--ivoire-surface)" stroke="var(--laiton)" stroke-width="6"/>
+        <ellipse cx="180" cy="170" rx="120" ry="145" fill="none" stroke="var(--border)" stroke-width="1"/>
+        <ellipse cx="145" cy="120" rx="34" ry="52" fill="var(--ivoire)" opacity="0.6"/>
+        <rect x="168" y="300" width="24" height="46" rx="4" fill="var(--laiton)"/>
+        <rect x="140" y="342" width="80" height="10" rx="5" fill="var(--laiton)"/>
+        <g transform="translate(250,60) rotate(18)">
+          <circle cx="0" cy="0" r="9" fill="none" stroke="var(--bordeaux)" stroke-width="3"/>
+          <circle cx="0" cy="26" r="9" fill="none" stroke="var(--bordeaux)" stroke-width="3"/>
+          <line x1="7" y1="7" x2="46" y2="46" stroke="var(--bordeaux)" stroke-width="3" stroke-linecap="round"/>
+          <line x1="7" y1="19" x2="46" y2="-20" stroke="var(--bordeaux)" stroke-width="3" stroke-linecap="round"/>
+        </g>
+      </svg>
+    </div>
+  </section>
+
+  <section class="ink-band">
+    <div class="wrap about-grid reveal">
+      <div>
+        <span class="eyebrow">L'atelier</span>
+        <h2 style="font-size:2rem; font-style:italic;">Un salon de quartier, un savoir-faire de studio</h2>
+        <p style="margin-top:20px; max-width:52ch;">Fondé par Odette, le salon réunit une petite équipe passionnée par la coupe, la couleur et le conseil. Pas de chaîne, pas de rendez-vous à la chaîne&nbsp;: le temps qu'il faut, pour un résultat qui tient.</p>
+        <div class="stat-row">
+          <div class="stat"><div class="num mono">12</div><div class="label">ans d'expérience cumulée</div></div>
+          <div class="stat"><div class="num mono">3</div><div class="label">coiffeurs·euses à votre écoute</div></div>
+          <div class="stat"><div class="num mono">6</div><div class="label">jours d'ouverture par semaine</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="prestations">
+    <div class="wrap">
+      <span class="eyebrow">Prestations</span>
+      <h2 style="font-size:2rem; max-width:24ch;">Nos coupes, couleurs et soins</h2>
+      <div class="menu-groups">
+        <div class="menu-group reveal">
+          <h3>Coupes</h3>
+          <ul class="menu-list">
+            <li class="menu-item"><span class="item">Coupe femme</span><span class="dots"></span><span class="price mono">48&nbsp;€</span></li>
+            <li class="menu-item"><span class="item">Coupe homme</span><span class="dots"></span><span class="price mono">26&nbsp;€</span></li>
+            <li class="menu-item"><span class="item">Coupe enfant (-12 ans)</span><span class="dots"></span><span class="price mono">18&nbsp;€</span></li>
+          </ul>
+        </div>
+        <div class="menu-group reveal">
+          <h3>Couleur</h3>
+          <ul class="menu-list">
+            <li class="menu-item"><span class="item">Racines</span><span class="dots"></span><span class="price mono">55&nbsp;€</span></li>
+            <li class="menu-item"><span class="item">Coloration complète</span><span class="dots"></span><span class="price mono">68&nbsp;€</span></li>
+            <li class="menu-item"><span class="item">Balayage / mèches</span><span class="dots"></span><span class="price mono">dès 85&nbsp;€</span></li>
+          </ul>
+        </div>
+        <div class="menu-group reveal">
+          <h3>Soins &amp; coiffage</h3>
+          <ul class="menu-list">
+            <li class="menu-item"><span class="item">Brushing</span><span class="dots"></span><span class="price mono">28&nbsp;€</span></li>
+            <li class="menu-item"><span class="item">Soin profond</span><span class="dots"></span><span class="price mono">20&nbsp;€</span></li>
+            <li class="menu-item"><span class="item">Coiffage événement</span><span class="dots"></span><span class="price mono">dès 60&nbsp;€</span></li>
+          </ul>
+        </div>
+      </div>
+      <p class="menu-note">Tarifs indicatifs pour cheveux mi-longs, ajustés en cabine selon la longueur et l'épaisseur.</p>
+    </div>
+  </section>
+
+  <section id="equipe" style="background:var(--ivoire-surface); border-top:1px solid var(--border); border-bottom:1px solid var(--border);">
+    <div class="wrap">
+      <span class="eyebrow">L'équipe</span>
+      <h2 style="font-size:2rem;">Trois paires de mains, une même exigence</h2>
+      <div class="team-grid">
+        <div class="team-card reveal">
+          <div class="avatar" style="background:var(--bordeaux); color:var(--bordeaux-contrast);">O</div>
+          <h3>Odette</h3>
+          <div class="role">Fondatrice &amp; coloriste</div>
+        </div>
+        <div class="team-card reveal">
+          <div class="avatar" style="background:var(--laiton); color:var(--laiton-contrast);">K</div>
+          <h3>Karim</h3>
+          <div class="role">Coupe homme &amp; barbe</div>
+        </div>
+        <div class="team-card reveal">
+          <div class="avatar" style="background:var(--encre); color:var(--ivoire);">L</div>
+          <h3>Lina</h3>
+          <div class="role">Coupe femme &amp; coiffure événementielle</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="horaires">
+    <div class="wrap info-grid">
+      <div class="reveal">
+        <span class="eyebrow">Horaires</span>
+        <h2 style="font-size:1.9rem;">Quand passer nous voir</h2>
+        <div class="hours-table">
+          <div class="hours-row"><span class="day">Lundi</span><span>Fermé</span></div>
+          <div class="hours-row"><span class="day">Mardi – Vendredi</span><span>9h00 – 19h00</span></div>
+          <div class="hours-row"><span class="day">Samedi</span><span>9h00 – 18h00</span></div>
+          <div class="hours-row"><span class="day">Dimanche</span><span>Fermé</span></div>
+        </div>
+      </div>
+      <div class="contact-card reveal">
+        <div class="row">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5c0-1 1-2 2-2h2l2 5-2 1c1 3 3 5 6 6l1-2 5 2v2c0 1-1 2-2 2C10 19 4 13 4 5z"/></svg>
+          <a href="tel:+33123456789">01 23 45 67 89</a>
+        </div>
+        <div class="row">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="1.5"/><path d="M3.5 6.5 12 13l8.5-6.5"/></svg>
+          <a href="mailto:contact@salon-odette.example">contact@salon-odette.example</a>
+        </div>
+        <div class="row">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21s7-6.3 7-11.5A7 7 0 0 0 5 9.5C5 14.7 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.4"/></svg>
+          <span>12 rue des Acacias, Fontenay-sous-Bois</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="compte" style="background:var(--ivoire-surface); border-top:1px solid var(--border); border-bottom:1px solid var(--border);">
+    <div class="wrap">
+      <span class="eyebrow">Espace client</span>
+      <h2 style="font-size:1.9rem; max-width:26ch;">Votre espace client</h2>
+      <p style="margin-top:14px; max-width:56ch; color:var(--encre-soft);">Retrouvez vos informations et vos rendez-vous en un coup d'œil.</p>
+      <div id="clientSpacePanel" class="account-panel client-space-card reveal"></div>
+      <p class="account-caption">Compte client sécurisé (email + mot de passe), synchronisé sur tous vos appareils.</p>
+    </div>
+  </section>
+
+  <section id="reserver" class="ink-band">
+    <div class="wrap">
+      <span class="eyebrow">Réservation</span>
+      <h2 style="font-size:2rem; max-width:26ch; font-style:italic;">Réservez votre créneau</h2>
+      <p style="margin-top:14px; max-width:56ch;">Choisissez d'abord votre coiffeur, puis un créneau libre dans son planning.</p>
+      <p id="rescheduleBanner" class="login-alert" hidden></p>
+
+      <div class="coiffeur-selector" id="coiffeurSelector"></div>
+
+      <div class="calendar-nav">
+        <button type="button" id="prevWeekBtn" class="btn btn-ghost">← Semaine précédente</button>
+        <span class="week-label" id="weekLabel"></span>
+        <button type="button" id="nextWeekBtn" class="btn btn-ghost">Semaine suivante →</button>
+      </div>
+      <div class="calendar-wrap">
+        <div class="calendar" id="calendar"></div>
+      </div>
+      <div class="calendar-legend">
+        <span><span class="dot" style="background:var(--bordeaux);"></span>Sélectionné</span>
+        <span><span class="dot" style="border:1px solid var(--ivoire); background:transparent;"></span>Disponible</span>
+        <span><span class="dot" style="background:color-mix(in srgb, var(--ivoire) 40%, transparent);"></span>Complet</span>
+      </div>
+      <p class="calendar-caption">Les jours fermés (lundi, dimanche) et les jours passés sont grisés, et les créneaux déjà réservés par un autre client apparaissent barrés — en temps réel.</p>
+
+      <div class="booking-note" style="margin-top:32px; max-width:480px;">
+        <h3>Besoin d'une réponse rapide&nbsp;?</h3>
+        <p>Appelez directement le salon au <strong class="mono">01 23 45 67 89</strong>, ou passez nous voir aux horaires d'ouverture — pas besoin de rendez-vous pour un simple conseil.</p>
+      </div>
+    </div>
+  </section>
+
+  <div id="bookingModal" class="modal-backdrop" hidden>
+    <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <button type="button" class="modal-close" id="modalCloseBtn" aria-label="Fermer">&times;</button>
+      <h3 id="modalTitle">Confirmer votre créneau</h3>
+      <p class="slot-label mono" id="confirmSlotLabel"></p>
+      <div class="field">
+        <label for="c-prestation">Prestation souhaitée</label>
+        <select id="c-prestation">
+          <option value="Coupe femme">Coupe femme</option>
+          <option value="Coupe homme">Coupe homme</option>
+          <option value="Couleur">Couleur</option>
+          <option value="Balayage / mèches">Balayage / mèches</option>
+          <option value="Coiffage événement">Coiffage événement</option>
+          <option value="Autre">Autre</option>
+        </select>
+      </div>
+      <div id="accountPanel" class="account-panel"></div>
+      <p id="accountCaption" class="account-caption">Compte client sécurisé (email + mot de passe), synchronisé sur tous vos appareils.</p>
+    </div>
+  </div>
+
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <div class="footer-grid">
+      <div>
+        <h4>Salon Odette</h4>
+        <p style="max-width:34ch;">Coupe, couleur et soins, à Fontenay-sous-Bois.</p>
+      </div>
+      <div>
+        <h4>Contact</h4>
+        <a href="tel:+33123456789">01 23 45 67 89</a>
+        <a href="mailto:contact@salon-odette.example">contact@salon-odette.example</a>
+      </div>
+      <div>
+        <h4>Adresse</h4>
+        <p>12 rue des Acacias</p>
+        <p>94120 Fontenay-sous-Bois</p>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span id="footerYear"></span>
+      <span class="credit">Exemple de réalisation — site conçu par <a href="mailto:thibaut.martinantdepreneuf@epfedu.fr">Thibaut Martinant de Preneuf</a>, disponible pour créer le vôtre.</span>
+      <a href="salon-odette-espace-coiffeur.html" style="text-decoration:underline;">Espace coiffeur</a>
+    </div>
+  </div>
+</footer>
+
+<!--
+  Le JavaScript de CETTE page est réparti dans 3 fichiers séparés (pour s'y
+  retrouver plus facilement), chacun avec un commentaire d'en-tête qui
+  explique son rôle, ce qui est fait, ce qu'il reste à faire, et ses
+  fonctions :
+    - salon-odette-connexion.js   → compte Supabase, inscription, connexion
+    - salon-odette-client.js      → profil, modifier ses infos, ses rendez-vous
+    - salon-odette-reservation.js → calendrier, fenêtre de confirmation
+  Ces 3 fichiers partagent volontairement un même espace de variables (aucun
+  n'est isolé dans sa propre IIFE) car ils s'appellent mutuellement — l'ordre
+  de chargement ci-dessous est important, voir l'en-tête de chaque fichier.
+  L'espace coiffeur (salon-odette-coiffeur.js) vit sur sa PROPRE page séparée
+  (salon-odette-espace-coiffeur.html, lien dans le pied de page) — il n'est
+  pas chargé ici, pour ne pas entrer en conflit avec ces variables partagées.
+-->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4/dist/umd/supabase.js"></script>
+<script src="salon-odette-connexion.js"></script>
+<script src="salon-odette-client.js"></script>
+<script src="salon-odette-reservation.js"></script>
+<script>
+(function () {
+  document.getElementById('footerYear').textContent = '© ' + new Date().getFullYear() + ' Salon Odette (exemple)';
+
+  var prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var revealEls = document.querySelectorAll('.reveal');
+  if (prefersReducedMotion || !('IntersectionObserver' in window)) {
+    revealEls.forEach(function (el) { el.classList.add('is-visible'); });
+  } else {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) { entry.target.classList.add('is-visible'); io.unobserve(entry.target); }
+      });
+    }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+    revealEls.forEach(function (el) { io.observe(el); });
+  }
+})();
+</script>

@@ -1,0 +1,772 @@
+<!--
+  Variante "direction artistique" du site — même contenu / mêmes coordonnées que
+  la version "Vitrine de Quartier", habillage graphique complètement différent
+  (plan technique / bleu d'architecte). Reste à compléter avant diffusion large :
+  - Numéro SIRET (mentions légales) — actuellement "à compléter"
+-->
+<title>Plan de Vitrine</title>
+<style>
+  :root {
+    --blueprint: #0F2A4E;
+    --blueprint-deep: #0A1D38;
+    --line: #EAF3FA;
+    --line-soft: #90AAC4;
+    --cyan: #5FD4D0;
+    --amber: #F2A63D;
+    --grid-line: rgba(234,243,250,0.07);
+    --danger-bg: #3C2414;
+    --danger-fg: #F4D9B8;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background-color: var(--blueprint);
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 34px 34px;
+    color: var(--line);
+    font-family: 'Work Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, .display {
+    font-family: 'Archivo', 'Arial Black', sans-serif;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+    color: var(--line);
+    margin: 0;
+    text-transform: uppercase;
+  }
+
+  .mono {
+    font-family: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  a { color: var(--cyan); }
+  p { margin: 0; }
+  ul { margin: 0; padding: 0; list-style: none; }
+  button { font: inherit; color: inherit; }
+
+  :focus-visible {
+    outline: 2px solid var(--amber);
+    outline-offset: 3px;
+  }
+
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+  .prose { max-width: 640px; }
+
+  section { padding: 88px 0; }
+  @media (max-width: 640px) { section { padding: 56px 0; } }
+
+  .sheet-tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--cyan);
+    border: 1px solid var(--cyan);
+    display: inline-block;
+    padding: 4px 10px;
+    margin-bottom: 18px;
+  }
+
+  /* ---------- frame / crop-mark component ---------- */
+  .frame {
+    position: relative;
+    border: 1px solid var(--line-soft);
+    background: rgba(234,243,250,0.02);
+    transition: box-shadow 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
+  }
+  .frame:hover {
+    border-color: var(--amber);
+    box-shadow: 0 0 0 1px var(--amber), 0 10px 30px rgba(242,166,61,0.18);
+    transform: translateY(-2px);
+  }
+  .frame::before, .frame::after {
+    content: "";
+    position: absolute;
+    width: 20px; height: 20px;
+    pointer-events: none;
+    transition: border-color 0.2s ease, width 0.2s ease, height 0.2s ease;
+  }
+  .frame::before { top: -2px; left: -2px; border-top: 2px solid var(--cyan); border-left: 2px solid var(--cyan); }
+  .frame::after { bottom: -2px; right: -2px; border-bottom: 2px solid var(--cyan); border-right: 2px solid var(--cyan); }
+  .frame:hover::before, .frame:hover::after { border-color: var(--amber); width: 26px; height: 26px; }
+
+  /* ---------- dimension divider ---------- */
+  .dim-divider {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    color: var(--line-soft);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .dim-divider::before, .dim-divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--line-soft);
+  }
+
+  /* ---------- buttons ---------- */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 22px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600;
+    font-size: 0.85rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    text-decoration: none;
+    border: 2px solid var(--cyan);
+    cursor: pointer;
+    background: transparent;
+    color: var(--line);
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .btn-primary { background: var(--cyan); color: var(--blueprint-deep); }
+  .btn-primary:hover { background: var(--amber); border-color: var(--amber); }
+  .btn-ghost:hover { background: rgba(95,212,208,0.12); }
+  .btn-amber { border-color: var(--amber); color: var(--amber); }
+  .btn-amber:hover { background: var(--amber); color: var(--blueprint-deep); }
+
+  /* ---------- header ---------- */
+  header.site {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: color-mix(in srgb, var(--blueprint) 90%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line-soft);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  header.site.scrolled {
+    border-bottom-color: var(--cyan);
+    box-shadow: 0 2px 24px rgba(95,212,208,0.18);
+  }
+  .header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 24px;
+  }
+  .brand {
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600;
+    font-size: 1rem;
+    text-decoration: none;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--line);
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .brand .rev { font-size: 0.7rem; color: var(--cyan); font-weight: 500; }
+
+  @media (max-width: 420px) {
+    .header-inner { padding: 12px 16px; gap: 8px; }
+    .brand { font-size: 0.8rem; }
+    .brand .rev { display: none; }
+    nav.primary { gap: 10px; }
+    .header-inner .btn-primary { padding: 9px 12px; font-size: 0.72rem; white-space: nowrap; }
+  }
+  nav.primary { display: flex; align-items: center; gap: 26px; }
+  .nav-links { display: flex; gap: 22px; }
+  nav.primary a.navlink {
+    text-decoration: none;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--line-soft);
+  }
+  nav.primary a.navlink:hover { color: var(--cyan); }
+  @media (max-width: 760px) { .nav-links { display: none; } }
+
+  /* ---------- hero ---------- */
+  .hero { padding: 76px 0 96px; }
+  .hero-grid {
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 56px;
+    align-items: center;
+  }
+  @media (max-width: 860px) {
+    .hero { padding: 48px 0 64px; }
+    .hero-grid { grid-template-columns: 1fr; }
+  }
+  .hero h1 { font-size: clamp(2rem, 4.2vw, 3rem); line-height: 1.08; }
+  .hero .sub {
+    margin-top: 22px;
+    font-size: 1.1rem;
+    color: var(--line-soft);
+    max-width: 46ch;
+    text-transform: none;
+  }
+  .hero .cta-row { margin-top: 32px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+  .blueprint-art { padding: 20px; }
+  .blueprint-art svg { width: 100%; height: auto; }
+
+  /* ---------- about ---------- */
+  .about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; }
+  @media (max-width: 780px) { .about-grid { grid-template-columns: 1fr; } }
+  .about-text p { color: var(--line-soft); font-size: 1.02rem; text-transform: none; }
+  .id-card { padding: 34px; }
+  .id-card dl { display: flex; flex-direction: column; gap: 3px; margin: 0; }
+  .id-card dt {
+    font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--cyan); font-family: 'IBM Plex Mono', monospace;
+    margin-top: 16px;
+  }
+  .id-card dt:first-child { margin-top: 0; }
+  .id-card dd { margin: 0; font-weight: 500; font-size: 1rem; }
+
+  /* ---------- services ---------- */
+  .cards-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 44px; }
+  @media (max-width: 860px) { .cards-3 { grid-template-columns: 1fr; } }
+  .service-card { padding: 28px; }
+  .service-icon { width: 38px; height: 38px; color: var(--cyan); margin-bottom: 18px; }
+  .service-card h3 { font-size: 1rem; margin-bottom: 10px; }
+  .service-card p { color: var(--line-soft); font-size: 0.95rem; text-transform: none; }
+
+  /* ---------- pricing ---------- */
+  .price-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 44px; }
+  @media (max-width: 900px) { .price-cards { grid-template-columns: 1fr; } }
+  .price-card { padding: 28px; display: flex; flex-direction: column; gap: 18px; }
+  .price-card.highlight { border-color: var(--amber); }
+  .price-card.highlight::before, .price-card.highlight::after { border-color: var(--amber); }
+  .price-card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .price-card-head h3 { font-family: 'IBM Plex Mono', monospace; font-size: 1rem; }
+  .price-tag {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;
+    background: var(--amber); color: var(--blueprint-deep);
+    padding: 3px 8px; font-family: 'IBM Plex Mono', monospace; font-weight: 700;
+  }
+  .price-amount { font-size: 1.5rem; font-weight: 700; color: var(--cyan); }
+  .price-card ul { display: flex; flex-direction: column; gap: 10px; }
+  .price-card li { font-size: 0.9rem; color: var(--line-soft); padding-left: 20px; position: relative; text-transform: none; }
+  .price-card li::before { content: "—"; position: absolute; left: 0; color: var(--cyan); }
+  .pricing-notes { margin-top: 36px; display: grid; grid-template-columns: 1fr; max-width: 480px; gap: 16px; font-size: 0.85rem; color: var(--line-soft); }
+  .pricing-notes .note-label {
+    color: var(--cyan); font-weight: 600; margin-bottom: 4px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .pricing-fineprint { margin-top: 32px; font-size: 0.84rem; color: var(--line-soft); border-top: 1px solid var(--line-soft); padding-top: 20px; }
+
+  /* ---------- process ---------- */
+  .process-list { margin-top: 48px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+  @media (max-width: 900px) { .process-list { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 560px) { .process-list { grid-template-columns: 1fr; } }
+  .process-step { padding: 20px 18px; }
+  .process-step .num { font-family: 'IBM Plex Mono', monospace; color: var(--amber); font-size: 1.3rem; font-weight: 700; display: block; margin-bottom: 10px; }
+  .process-step h3 { font-size: 0.92rem; margin-bottom: 8px; }
+  .process-step p { color: var(--line-soft); font-size: 0.88rem; text-transform: none; }
+
+  /* ---------- faq ---------- */
+  .faq-list { margin-top: 40px; display: flex; flex-direction: column; gap: 2px; }
+  details.faq-item { padding: 18px 22px; }
+  details.faq-item summary {
+    cursor: pointer; font-weight: 600; font-size: 0.98rem; list-style: none;
+    display: flex; justify-content: space-between; align-items: center; gap: 16px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  details.faq-item summary::-webkit-details-marker { display: none; }
+  details.faq-item summary .idx { color: var(--cyan); margin-right: 12px; }
+  details.faq-item summary .plus { color: var(--amber); font-size: 1.2rem; flex-shrink: 0; transition: transform 0.15s ease; }
+  details.faq-item[open] summary .plus { transform: rotate(45deg); }
+  details.faq-item p { margin-top: 12px; color: var(--line-soft); font-size: 0.94rem; max-width: 68ch; text-transform: none; }
+
+  /* ---------- devis form ---------- */
+  .devis-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 40px; align-items: start; }
+  @media (max-width: 860px) { .devis-grid { grid-template-columns: 1fr; } }
+  .form-frame { padding: 28px; }
+  .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; }
+  .field label { font-size: 0.72rem; font-weight: 600; font-family: 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: 0.06em; color: var(--cyan); }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 480px) { .field-row { grid-template-columns: 1fr; } }
+  .field input, .field select, .field textarea {
+    font: inherit; font-size: 0.95rem; padding: 11px 12px;
+    border: 1px solid var(--line-soft); background: var(--blueprint-deep); color: var(--line);
+  }
+  .field textarea { resize: vertical; min-height: 100px; }
+  .field input:focus, .field select:focus, .field textarea:focus { outline: 2px solid var(--amber); outline-offset: 1px; }
+  .form-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 6px; align-items: center; }
+  .form-status {
+    margin-top: 16px; font-size: 0.85rem; padding: 12px 14px;
+    background: var(--blueprint-deep); border: 1px solid var(--line-soft); display: none;
+  }
+  .form-status.show { display: block; }
+  .direct-contact { padding: 24px; }
+  .direct-contact h3 { font-size: 0.92rem; margin-bottom: 14px; font-family: 'IBM Plex Mono', monospace; }
+  .direct-contact .row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; font-size: 0.95rem; }
+  .direct-contact svg { width: 18px; height: 18px; color: var(--cyan); flex-shrink: 0; }
+  .direct-contact a { text-decoration: none; }
+
+  /* ---------- footer / title block ---------- */
+  footer.site { background: var(--blueprint-deep); border-top: 1px solid var(--line-soft); padding: 40px 0; }
+  .footer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+  @media (max-width: 500px) { .footer-grid { grid-template-columns: 1fr; } }
+  .footer-grid h4 {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--cyan); margin-bottom: 14px; font-weight: 600;
+  }
+  .footer-grid p, .footer-grid a { font-size: 0.88rem; color: var(--line-soft); display: block; text-decoration: none; margin-bottom: 8px; }
+  .footer-grid a:hover { color: var(--cyan); }
+  .footer-bottom {
+    margin-top: 28px; padding-top: 20px; border-top: 1px solid rgba(234,243,250,0.12);
+    display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+    font-size: 0.75rem; color: var(--line-soft); font-family: 'IBM Plex Mono', monospace; letter-spacing: 0.04em;
+  }
+
+  /* ---------- reveal ---------- */
+  .reveal { opacity: 0; transform: scale(0.92) translateY(14px); transition: opacity 0.65s ease, transform 0.65s ease; }
+  .reveal.is-visible { opacity: 1; transform: scale(1) translateY(0); }
+  @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } }
+  .cards-3 .service-card:nth-child(1) { transition-delay: 0.05s; }
+  .cards-3 .service-card:nth-child(2) { transition-delay: 0.15s; }
+  .cards-3 .service-card:nth-child(3) { transition-delay: 0.25s; }
+  .price-cards .price-card:nth-child(1) { transition-delay: 0.05s; }
+  .price-cards .price-card:nth-child(2) { transition-delay: 0.15s; }
+  .price-cards .price-card:nth-child(3) { transition-delay: 0.25s; }
+  .process-list .process-step:nth-child(1) { transition-delay: 0.05s; }
+  .process-list .process-step:nth-child(2) { transition-delay: 0.12s; }
+  .process-list .process-step:nth-child(3) { transition-delay: 0.19s; }
+  .process-list .process-step:nth-child(4) { transition-delay: 0.26s; }
+</style>
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600;700&display=swap">
+
+<header class="site">
+  <div class="header-inner">
+    <a class="brand" href="#top">Vitrine de Quartier <span class="rev">REV. 01</span></a>
+    <nav class="primary">
+      <div class="nav-links">
+        <a class="navlink" href="#services">Services</a>
+        <a class="navlink" href="#tarifs">Tarifs</a>
+        <a class="navlink" href="#processus">Processus</a>
+        <a class="navlink" href="#faq">FAQ</a>
+      </div>
+      <a class="btn btn-primary" href="#devis">Demander un devis</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <span class="sheet-tag">Feuille 01 / Présentation</span>
+        <h1>Votre commerce mérite une vitrine en ligne</h1>
+        <p class="sub">Un site pro pour votre commerce et à bas prix.</p>
+        <div class="cta-row">
+          <a class="btn btn-primary" href="#devis">Demander un devis gratuit</a>
+          <a class="btn btn-ghost" href="#tarifs">Voir les tarifs</a>
+        </div>
+      </div>
+      <div class="blueprint-art frame">
+        <svg viewBox="0 0 420 340" role="img" aria-label="Plan technique d'une devanture de commerce">
+          <line x1="30" y1="46" x2="390" y2="46" stroke="var(--line-soft)" stroke-width="1"/>
+          <line x1="30" y1="40" x2="30" y2="52" stroke="var(--line-soft)" stroke-width="1"/>
+          <line x1="390" y1="40" x2="390" y2="52" stroke="var(--line-soft)" stroke-width="1"/>
+          <text x="210" y="34" fill="var(--line-soft)" font-size="11" font-family="IBM Plex Mono, monospace" text-anchor="middle">5,40 M</text>
+
+          <line x1="14" y1="70" x2="14" y2="300" stroke="var(--line-soft)" stroke-width="1"/>
+          <line x1="8" y1="70" x2="20" y2="70" stroke="var(--line-soft)" stroke-width="1"/>
+          <line x1="8" y1="300" x2="20" y2="300" stroke="var(--line-soft)" stroke-width="1"/>
+          <text x="14" y="190" fill="var(--line-soft)" font-size="11" font-family="IBM Plex Mono, monospace" text-anchor="middle" transform="rotate(-90 14 190)">3,20 M</text>
+
+          <rect x="34" y="70" width="352" height="30" fill="none" stroke="var(--cyan)" stroke-width="1.6"/>
+          <line x1="34" y1="85" x2="386" y2="85" stroke="var(--cyan)" stroke-width="0.6" stroke-dasharray="4 4"/>
+
+          <rect x="34" y="100" width="352" height="200" fill="none" stroke="var(--line)" stroke-width="1.8"/>
+
+          <rect x="56" y="130" width="110" height="90" fill="rgba(95,212,208,0.06)" stroke="var(--line)" stroke-width="1.2"/>
+          <line x1="111" y1="130" x2="111" y2="220" stroke="var(--line)" stroke-width="0.8"/>
+          <line x1="56" y1="175" x2="166" y2="175" stroke="var(--line)" stroke-width="0.8"/>
+
+          <rect x="244" y="130" width="110" height="90" fill="rgba(95,212,208,0.06)" stroke="var(--line)" stroke-width="1.2"/>
+          <line x1="299" y1="130" x2="299" y2="220" stroke="var(--line)" stroke-width="0.8"/>
+          <line x1="244" y1="175" x2="354" y2="175" stroke="var(--line)" stroke-width="0.8"/>
+
+          <rect x="182" y="160" width="56" height="140" fill="none" stroke="var(--amber)" stroke-width="1.6"/>
+          <circle cx="228" cy="230" r="2.4" fill="var(--amber)"/>
+
+          <text x="210" y="322" fill="var(--line-soft)" font-size="10" font-family="IBM Plex Mono, monospace" text-anchor="middle" letter-spacing="1">ÉCH. 1:50 — FAÇADE COMMERCE</text>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <section id="apropos">
+    <div class="wrap about-grid reveal">
+      <div class="about-text">
+        <span class="sheet-tag">Feuille 02 / À propos</span>
+        <h2 style="font-size:1.7rem; margin-bottom:20px;">Un site web à votre image</h2>
+        <p>Étudiant ingénieur à l'EPF et développeur web en auto-entrepreneur, je crée des sites pour les commerçants et artisans de proximité, aussi soignés que leur vitrine physique, sans les tarifs d'agence.</p>
+      </div>
+      <div class="id-card frame">
+        <dl>
+          <dt>Nom</dt><dd>Thibaut Martinant de Preneuf</dd>
+          <dt>Activité</dt><dd>Création de sites web pour commerces</dd>
+          <dt>Zone</dt><dd>Fontenay-sous-Bois (94) et alentours</dd>
+          <dt>Statut</dt><dd>Auto-entrepreneur</dd>
+          <dt>Parcours</dt><dd>Étudiant ingénieur à l'EPF · projet associatif pour Défi Accès</dd>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <div class="wrap"><div class="dim-divider">Suite du plan</div></div>
+
+  <section id="services">
+    <div class="wrap">
+      <span class="sheet-tag">Feuille 03 / Services</span>
+      <h2 style="font-size:1.7rem; max-width:24ch;">Ce que je vous propose</h2>
+      <div class="cards-3">
+        <div class="service-card frame reveal">
+          <svg class="service-icon" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="6" y="8" width="28" height="19"/><line x1="6" y1="14" x2="34" y2="14"/><line x1="16" y1="32" x2="24" y2="32"/><line x1="20" y1="27" x2="20" y2="32"/></svg>
+          <h3>Un site vitrine qui vous ressemble</h3>
+          <p>Une page web qui présente votre commerce, vos services ou votre savoir-faire.</p>
+        </div>
+        <div class="service-card frame reveal">
+          <svg class="service-icon" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 20c0-6.6 5.4-12 12-12s12 5.4 12 12"/><path d="M8 20v6a3 3 0 0 0 3 3h1v-9H9a1 1 0 0 0-1 1z"/><path d="M32 20v6a3 3 0 0 1-3 3h-1v-9h3a1 1 0 0 1 1 1z"/></svg>
+          <h3>Un accompagnement qui vous simplifie la vie</h3>
+          <p>Je gère l'hébergement et la mise en ligne de votre site, et reste disponible pour vos questions.</p>
+        </div>
+        <div class="service-card frame reveal">
+          <svg class="service-icon" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="17" cy="17" r="10"/><line x1="24.5" y1="24.5" x2="33" y2="33"/></svg>
+          <h3>Être trouvé par les clients qui vous cherchent déjà</h3>
+          <p>Structure optimisée et fiche Google dès la création, pour apparaître quand on cherche votre activité près de chez vous.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tarifs">
+    <div class="wrap">
+      <span class="sheet-tag">Feuille 04 / Devis technique</span>
+      <h2 style="font-size:1.7rem;">Les formules proposées</h2>
+      <p style="margin-top:16px; color:var(--line-soft); max-width:60ch; text-transform:none;">Des prix simples et transparents, plus bas que la concurrence le temps de me faire connaître — pour remercier les premiers commerçants qui me font confiance.</p>
+
+      <div class="price-cards">
+        <div class="price-card frame reveal">
+          <div class="price-card-head"><h3>Essentiel</h3></div>
+          <div class="price-amount mono">à partir de 490&nbsp;€</div>
+          <ul>
+            <li>Site vitrine de 1 à 4 pages (accueil, présentation, services, contact)</li>
+            <li>Design sobre et professionnel adapté à votre activité</li>
+            <li>Formulaire de contact simple pour recevoir vos demandes</li>
+            <li>Parfaitement lisible sur mobile et tablette</li>
+            <li>Référencement de base (structure, mots-clés, fiche établissement)</li>
+            <li>Mise en ligne et nom de domaine pris en charge</li>
+          </ul>
+        </div>
+        <div class="price-card highlight frame reveal">
+          <div class="price-card-head"><h3>Confort</h3><span class="price-tag">Le plus choisi</span></div>
+          <div class="price-amount mono">à partir de 1&nbsp;290&nbsp;€</div>
+          <ul>
+            <li>Site de 5 à 10 pages avec design entièrement personnalisé</li>
+            <li>Prise de rendez-vous en ligne pour vos clients</li>
+            <li>Galerie photo de vos réalisations, produits ou de votre boutique</li>
+            <li>Blog ou actualités pour partager la vie de votre commerce</li>
+            <li>Référencement local renforcé (fiche Google optimisée)</li>
+            <li>Formation d'une heure pour gérer vous-même vos contenus</li>
+          </ul>
+        </div>
+        <div class="price-card frame reveal">
+          <div class="price-card-head"><h3>Boutique en ligne</h3></div>
+          <div class="price-amount mono">à partir de 1&nbsp;790&nbsp;€</div>
+          <ul>
+            <li>Catalogue de produits avec fiches détaillées et photos</li>
+            <li>Panier et paiement en ligne sécurisé par carte bancaire</li>
+            <li>Gestion simple de vos commandes et de vos stocks</li>
+            <li>Design assorti à l'identité visuelle de votre commerce</li>
+            <li>Référencement de base inclus dès la mise en ligne</li>
+            <li>Formation à la gestion quotidienne de la boutique</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="pricing-notes">
+        <div>
+          <div class="note-label">Maintenance mensuelle</div>
+          <div>En option, généralement entre 10 et 15&nbsp;€/mois : hébergement, mises à jour et petites corrections incluses.</div>
+        </div>
+      </div>
+      <p class="pricing-fineprint">Tarifs indicatifs — devis final après un premier échange gratuit et sans engagement.</p>
+    </div>
+  </section>
+
+  <section id="processus">
+    <div class="wrap">
+      <span class="sheet-tag">Feuille 05 / Étapes de chantier</span>
+      <h2 style="font-size:1.7rem; max-width:26ch;">Du premier échange à la mise en ligne</h2>
+      <div class="process-list">
+        <div class="process-step frame reveal">
+          <span class="num mono">01</span>
+          <h3>Premier échange, sans engagement</h3>
+          <p>Par téléphone, visio ou en personne&nbsp;: on parle de votre commerce et de vos besoins. Gratuit.</p>
+        </div>
+        <div class="process-step frame reveal">
+          <span class="num mono">02</span>
+          <h3>Un devis clair, adapté à votre budget et à votre volonté</h3>
+          <p>Un prix ferme, la liste précise de ce qui est inclus, et rien d'imposé — on ajuste ensemble si besoin.</p>
+        </div>
+        <div class="process-step frame reveal">
+          <span class="num mono">03</span>
+          <h3>Création de votre site, avec vos retours</h3>
+          <p>Je construis le site à partir de vos textes, photos ou logos, avec vos retours à chaque étape.</p>
+        </div>
+        <div class="process-step frame reveal">
+          <span class="num mono">04</span>
+          <h3>Mise en ligne, formation et suivi</h3>
+          <p>Mise en ligne, vérification sur tous les écrans, et je reste joignable après la livraison de votre site web.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="faq">
+    <div class="wrap prose">
+      <span class="sheet-tag">Feuille 06 / Notes techniques</span>
+      <h2 style="font-size:1.7rem;">Ce que les commerçants me demandent le plus</h2>
+      <div class="faq-list frame reveal">
+        <details class="faq-item">
+          <summary><span><span class="idx">N.01</span>Combien de temps faut-il pour avoir mon site en ligne ?</span><span class="plus">+</span></summary>
+          <p>2 à 3 semaines pour un site simple, 4 à 6 semaines pour un site plus complet, selon la rapidité de vos retours (textes, photos).</p>
+        </details>
+        <details class="faq-item">
+          <summary><span><span class="idx">N.02</span>L'hébergement du site est-il inclus dans le prix ?</span><span class="plus">+</span></summary>
+          <p>Mise en ligne et nom de domaine inclus. Un forfait de maintenance optionnel (10-15&nbsp;€/mois) garde ensuite votre site hébergé, à jour et sécurisé.</p>
+        </details>
+        <details class="faq-item">
+          <summary><span><span class="idx">N.03</span>Est-ce que je pourrai modifier moi-même mon site après la livraison ?</span><span class="plus">+</span></summary>
+          <p>Oui — je vous forme à gérer vos contenus au quotidien. Pour le technique, je reste disponible selon vos besoins.</p>
+        </details>
+        <details class="faq-item">
+          <summary><span><span class="idx">N.04</span>Mon site apparaîtra-t-il vraiment sur Google ?</span><span class="plus">+</span></summary>
+          <p>Référencement de base inclus dès la création (structure, mots-clés, fiche Google), pour être visible localement dès la mise en ligne.</p>
+        </details>
+        <details class="faq-item">
+          <summary><span><span class="idx">N.05</span>Comment se passe le paiement ?</span><span class="plus">+</span></summary>
+          <p>En deux fois&nbsp;: un acompte au démarrage, le solde à la mise en ligne. Jamais de paiement intégral à l'avance.</p>
+        </details>
+        <details class="faq-item">
+          <summary><span><span class="idx">N.06</span>Est-ce que je suis vraiment propriétaire de mon site à la fin ?</span><span class="plus">+</span></summary>
+          <p>Oui, à 100&nbsp;%. Domaine à votre nom, tous les accès transmis — vous n'êtes jamais dépendant de moi.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section id="devis">
+    <div class="wrap">
+      <span class="sheet-tag">Feuille 07 / Demande de devis</span>
+      <h2 style="font-size:1.7rem; max-width:30ch;">Envie d'un site qui donne enfin envie à vos clients de pousser la porte ?</h2>
+      <p style="margin-top:14px; color:var(--line-soft); max-width:60ch; text-transform:none;">Décrivez votre commerce en deux lignes&nbsp;: réponse rapide, conseil gratuit, devis sans engagement.</p>
+
+      <div class="devis-grid">
+        <form id="devisForm" class="form-frame frame" novalidate>
+          <div class="field-row">
+            <div class="field">
+              <label for="f-nom">Prénom et nom</label>
+              <input type="text" id="f-nom" name="nom" required autocomplete="name">
+            </div>
+            <div class="field">
+              <label for="f-commerce">Nom du commerce</label>
+              <input type="text" id="f-commerce" name="commerce" autocomplete="organization">
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="f-tel">Téléphone</label>
+              <input type="tel" id="f-tel" name="telephone" autocomplete="tel">
+            </div>
+            <div class="field">
+              <label for="f-email">Email</label>
+              <input type="email" id="f-email" name="email" required autocomplete="email">
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="f-projet">Type de projet</label>
+              <select id="f-projet" name="projet">
+                <option value="Site vitrine simple">Site vitrine simple</option>
+                <option value="Site vitrine avec fonctionnalités (RDV, galerie, blog)">Site avec fonctionnalités (RDV, galerie, blog)</option>
+                <option value="Boutique en ligne">Boutique en ligne</option>
+                <option value="Je ne sais pas encore">Je ne sais pas encore</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="f-budget">Budget indicatif (optionnel)</label>
+              <input type="text" id="f-budget" name="budget" placeholder="ex. 800–1500 €">
+            </div>
+          </div>
+          <div class="field">
+            <label for="f-message">Votre projet en quelques mots</label>
+            <textarea id="f-message" name="message" placeholder="Parlez-moi de votre commerce, de vos clients, et de ce que vous voudriez qu'un site fasse pour vous."></textarea>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Envoyer ma demande</button>
+            <button type="button" id="copyBtn" class="btn btn-ghost">Copier le message</button>
+            <button type="button" id="downloadBtn" class="btn btn-ghost">Télécharger un récapitulatif</button>
+          </div>
+          <p style="margin-top:14px; font-size:0.8rem; color:var(--line-soft); text-transform:none;">Vos informations partent directement par email — aucune donnée stockée sur un serveur.</p>
+          <div id="formStatus" class="form-status" role="status"></div>
+        </form>
+
+        <div class="direct-contact frame">
+          <h3>Ou contactez-moi directement</h3>
+          <div class="row">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5c0-1 1-2 2-2h2l2 5-2 1c1 3 3 5 6 6l1-2 5 2v2c0 1-1 2-2 2C10 19 4 13 4 5z"/></svg>
+            <a href="tel:+33766568268">07 66 56 82 68</a>
+          </div>
+          <div class="row">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="14" rx="1.5"/><path d="M3.5 6.5 12 13l8.5-6.5"/></svg>
+            <a href="mailto:thibaut.martinantdepreneuf@epfedu.fr">thibaut.martinantdepreneuf@epfedu.fr</a>
+          </div>
+          <div class="row">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 21s7-6.3 7-11.5A7 7 0 0 0 5 9.5C5 14.7 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.4"/></svg>
+            <span>Fontenay-sous-Bois (94)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <div class="footer-grid">
+      <div>
+        <h4>Contact</h4>
+        <a href="#devis">Demander un devis</a>
+        <a href="tel:+33766568268">07 66 56 82 68</a>
+        <a href="mailto:thibaut.martinantdepreneuf@epfedu.fr">thibaut.martinantdepreneuf@epfedu.fr</a>
+      </div>
+      <div>
+        <h4>Mentions légales</h4>
+        <p>Thibaut Martinant de Preneuf</p>
+        <p>Auto-entrepreneur — SIRET&nbsp;: à compléter</p>
+        <p>Zone d'intervention&nbsp;: Fontenay-sous-Bois (94) et alentours</p>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span id="footerYear"></span>
+      <span>Plan conçu et développé par moi-même — rév. 01</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  document.getElementById('footerYear').textContent = '© ' + new Date().getFullYear() + ' Vitrine de Quartier';
+
+  var EMAIL_PLACEHOLDER = 'thibaut.martinantdepreneuf@epfedu.fr';
+
+  var form = document.getElementById('devisForm');
+  var statusBox = document.getElementById('formStatus');
+  var copyBtn = document.getElementById('copyBtn');
+  var downloadBtn = document.getElementById('downloadBtn');
+
+  function buildMessage() {
+    var v = function (id) { return (document.getElementById(id).value || '').trim(); };
+    var lines = [
+      'Nouvelle demande de devis via le site',
+      '',
+      'Nom : ' + (v('f-nom') || '—'),
+      'Commerce : ' + (v('f-commerce') || '—'),
+      'Téléphone : ' + (v('f-tel') || '—'),
+      'Email : ' + (v('f-email') || '—'),
+      'Type de projet : ' + (v('f-projet') || '—'),
+      'Budget indicatif : ' + (v('f-budget') || '—'),
+      '',
+      'Message :',
+      v('f-message') || '—'
+    ];
+    return lines.join('\n');
+  }
+
+  function showStatus(text) {
+    statusBox.textContent = text;
+    statusBox.classList.add('show');
+  }
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (!form.checkValidity()) { form.reportValidity(); return; }
+    var subject = 'Demande de devis — ' + (document.getElementById('f-commerce').value.trim() || document.getElementById('f-nom').value.trim() || 'site internet');
+    var body = buildMessage();
+    var mailto = 'mailto:' + EMAIL_PLACEHOLDER + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+    window.location.href = mailto;
+    showStatus('Votre client mail va s\'ouvrir avec le message pré-rempli — il ne reste qu\'à cliquer sur Envoyer. Si rien ne s\'ouvre, utilisez "Copier le message" et collez-le dans un email.');
+  });
+
+  copyBtn.addEventListener('click', async function () {
+    try {
+      await navigator.clipboard.writeText(buildMessage());
+      showStatus('Message copié — vous pouvez le coller dans un email ou une messagerie.');
+    } catch (e) {
+      showStatus('La copie automatique n\'est pas disponible sur cet appareil. Merci de recopier votre message manuellement.');
+    }
+  });
+
+  downloadBtn.addEventListener('click', async function () {
+    try {
+      var downloads = await claude.use('downloads');
+      if (!downloads) { showStatus('Le téléchargement n\'est pas disponible ici. Utilisez plutôt "Copier le message".'); return; }
+      await downloads.save({ filename: 'demande-de-devis.txt', data: buildMessage() });
+      showStatus('Récapitulatif téléchargé.');
+    } catch (e) {
+      showStatus('Téléchargement annulé ou indisponible. Utilisez "Copier le message" en secours.');
+    }
+  });
+
+  var prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var revealEls = document.querySelectorAll('.reveal');
+  if (prefersReducedMotion || !('IntersectionObserver' in window)) {
+    revealEls.forEach(function (el) { el.classList.add('is-visible'); });
+  } else {
+    var revealObserver = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) { entry.target.classList.add('is-visible'); revealObserver.unobserve(entry.target); }
+      });
+    }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+    revealEls.forEach(function (el) { revealObserver.observe(el); });
+  }
+
+  var headerEl = document.querySelector('header.site');
+  var scrollTicking = false;
+  window.addEventListener('scroll', function () {
+    if (!scrollTicking) {
+      window.requestAnimationFrame(function () {
+        headerEl.classList.toggle('scrolled', window.scrollY > 8);
+        scrollTicking = false;
+      });
+      scrollTicking = true;
+    }
+  });
+})();
+</script>

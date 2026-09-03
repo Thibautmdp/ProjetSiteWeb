@@ -1,0 +1,136 @@
+<!--
+  Espace coiffeur — Salon Odette. Page interne réservée à l'équipe (Odette, Karim,
+  Lina), séparée du site public salon-odette-demo.html. Connexion Supabase distincte
+  (mêmes comptes que le reste du site), mais un compte doit être lié à un coiffeur dans
+  la table `staff` pour accéder au tableau de bord — voir salon-odette-schema.sql et
+  salon-odette-coiffeur.js pour le détail. Comptes coiffeur à créer manuellement pour
+  l'instant (Authentication → Add user), en attendant un vrai espace propriétaire pour
+  gérer l'équipe soi-même.
+-->
+<title>Espace coiffeur — Salon Odette</title>
+<style>
+  :root {
+    --ivoire: #F2EAE1;
+    --ivoire-surface: #E9DFD3;
+    --encre: #1B1512;
+    --encre-soft: #5B5049;
+    --bordeaux: #6C2437;
+    --bordeaux-contrast: #F2EAE1;
+    --laiton: #A9814D;
+    --laiton-contrast: #1B1512;
+    --border: rgba(27,21,18,0.14);
+    --shadow: 0 1px 2px rgba(27,21,18,0.06), 0 10px 28px rgba(27,21,18,0.08);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ivoire: #17120F; --ivoire-surface: #211A16; --encre: #F2EAE1; --encre-soft: #B9AEA5;
+      --bordeaux: #C06A80; --bordeaux-contrast: #1B1512; --laiton: #D8B37E; --laiton-contrast: #1B1512;
+      --border: rgba(242,234,225,0.14); color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ivoire: #17120F; --ivoire-surface: #211A16; --encre: #F2EAE1; --encre-soft: #B9AEA5;
+    --bordeaux: #C06A80; --bordeaux-contrast: #1B1512; --laiton: #D8B37E; --laiton-contrast: #1B1512;
+    --border: rgba(242,234,225,0.14); color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--ivoire); color: var(--encre);
+    font-family: 'Karla', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased;
+  }
+  h2, h3 { font-family: 'Bodoni Moda', Georgia, serif; font-weight: 500; margin: 0; color: var(--encre); }
+  .mono { font-family: 'Space Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  p { margin: 0; }
+  a { color: inherit; }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--laiton); outline-offset: 3px; }
+
+  .wrap { max-width: 780px; margin: 0 auto; padding: 0 24px; }
+
+  header.site {
+    position: sticky; top: 0; z-index: 20;
+    background: color-mix(in srgb, var(--ivoire) 88%, transparent);
+    backdrop-filter: blur(8px); border-bottom: 1px solid var(--border);
+  }
+  .header-inner { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 24px; max-width: 780px; margin: 0 auto; }
+  .brand { font-family: 'Bodoni Moda', serif; font-size: 1.05rem; font-style: italic; text-decoration: none; }
+  .eyebrow { font-family: 'Space Mono', monospace; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--laiton); }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px; padding: 13px 26px; border-radius: 999px;
+    font-weight: 600; font-size: 0.92rem; text-decoration: none; border: 1px solid transparent;
+    cursor: pointer; transition: transform 0.15s ease, background 0.15s ease;
+  }
+  .btn:hover { transform: translateY(-1px); }
+  .btn-primary { background: var(--bordeaux); color: var(--bordeaux-contrast); }
+  .btn-primary:hover { background: color-mix(in srgb, var(--bordeaux) 85%, black); }
+  .btn-ghost { background: transparent; color: var(--encre); border-color: var(--border); }
+  .btn-ghost:hover { background: var(--ivoire-surface); }
+
+  .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; }
+  .field label { font-size: 0.84rem; font-weight: 600; }
+  .field input {
+    font: inherit; font-size: 0.95rem; padding: 11px 12px; border-radius: 3px;
+    border: 1px solid var(--border); background: var(--ivoire); color: var(--encre);
+  }
+  .field input:focus { outline: 2px solid var(--laiton); outline-offset: 1px; }
+  .form-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 6px; align-items: center; }
+  .account-sub { font-size: 0.88rem; color: var(--encre-soft); margin-bottom: 16px; }
+  .account-empty { font-size: 0.9rem; color: var(--encre-soft); }
+  .login-alert {
+    margin-top: 14px; padding: 12px 14px; border-radius: 3px;
+    background: color-mix(in srgb, var(--bordeaux) 12%, var(--ivoire-surface));
+    border-left: 3px solid var(--bordeaux); color: var(--encre); font-size: 0.88rem;
+  }
+
+  .staff-card {
+    max-width: 420px; margin: 64px auto 0; background: var(--ivoire-surface);
+    border: 1px solid var(--border); border-radius: 4px; padding: 32px; box-shadow: var(--shadow);
+  }
+
+  .staff-header { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-top: 48px; }
+  .staff-header h2 { font-style: italic; font-size: 1.8rem; }
+
+  .next-appt {
+    margin-top: 24px; padding: 16px 20px; background: var(--ivoire-surface);
+    border-left: 3px solid var(--laiton); border-radius: 3px; font-size: 0.95rem;
+  }
+
+  .stat-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 28px; }
+  @media (max-width: 640px) { .stat-cards { grid-template-columns: 1fr 1fr; } }
+  .stat-card {
+    background: var(--ivoire-surface); border: 1px solid var(--border); border-radius: 4px;
+    padding: 18px 14px; text-align: center;
+  }
+  .stat-num { font-family: 'Bodoni Moda', serif; font-style: italic; font-size: 1.7rem; color: var(--bordeaux); }
+  .stat-label { font-size: 0.76rem; color: var(--encre-soft); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+
+  .booking-list { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+  .booking-list-item {
+    font-size: 0.92rem; padding: 12px 14px; background: var(--ivoire-surface);
+    border-radius: 3px; border: 1px solid var(--border);
+  }
+  .booking-list-item .presta { color: var(--encre-soft); font-size: 0.85rem; display: block; margin-top: 2px; }
+
+  #statsChart svg text { font-family: 'Space Mono', monospace; }
+</style>
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@0,500;0,600;1,500&family=Karla:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
+
+<header class="site">
+  <div class="header-inner">
+    <a class="brand" href="salon-odette-demo.html">← Salon Odette</a>
+    <span class="eyebrow">Espace coiffeur</span>
+  </div>
+</header>
+
+<main class="wrap" style="padding-bottom: 80px;">
+  <div id="loginPanel" class="staff-card"></div>
+  <div id="dashboardPanel" hidden></div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4/dist/umd/supabase.js"></script>
+<script src="salon-odette-coiffeur.js"></script>
