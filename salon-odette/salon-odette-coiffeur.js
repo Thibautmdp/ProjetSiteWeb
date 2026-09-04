@@ -164,9 +164,14 @@
 
 var SUPABASE_URL = 'https://vyqbbqeskzyromoyxrff.supabase.co';
 var SUPABASE_KEY = 'sb_publishable_zR0jfkgIXbfDrLPLxurx7w_QJIDW1t6';
-// persistSession: false — voir la même remarque dans salon-odette-connexion.js : utile le
-// temps qu'on teste plusieurs comptes coiffeur, à revoir avant un vrai usage.
-var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } });
+// persistSession: true (2026-09-04, revenu sur le false d'origine — voir la remarque dans
+// salon-odette-connexion.js) : nécessaire pour qu'une connexion faite ici soit reconnue
+// automatiquement sur salon-odette-espace-proprietaire.html sans se reconnecter — les deux
+// pages utilisent le même projet Supabase, la session est donc partagée via le
+// localStorage du navigateur. Revers de la médaille en testant plusieurs comptes coiffeur
+// d'affilée : recharger la page ne redemande plus de mot de passe automatiquement, il faut
+// cliquer "Se déconnecter" avant de se connecter avec un autre compte.
+var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true } });
 
 // Tarifs approximatifs, repris de la page tarifs du site public — sert uniquement à
 // estimer un chiffre d'affaires indicatif, pas une vraie facturation.
