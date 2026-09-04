@@ -225,6 +225,14 @@ drop policy if exists "absences_delete_own" on public.absences;
 create policy "absences_delete_own" on public.absences
   for delete using (exists (select 1 from public.staff where staff.id = auth.uid() and staff.nom = absences.coiffeur));
 
+-- Manquait jusqu'ici : le formulaire (salon-odette-coiffeur.js) fait un upsert, pas un
+-- simple insert, pour poser une plage horaire sans erreur si elle recoupe une absence déjà
+-- posée — sans règle "update", ce recoupement échouait silencieusement côté RLS.
+drop policy if exists "absences_update_own" on public.absences;
+create policy "absences_update_own" on public.absences
+  for update using (exists (select 1 from public.staff where staff.id = auth.uid() and staff.nom = absences.coiffeur))
+  with check (exists (select 1 from public.staff where staff.id = auth.uid() and staff.nom = absences.coiffeur));
+
 -- Vue publique : coiffeur + date + heure ('journee' ou un créneau précis), JAMAIS le
 -- motif (une raison comme "maladie" reste privée) — sert au calendrier client à fermer
 -- la journée entière OU juste ce créneau chez ce coiffeur précis, sans révéler pourquoi.
@@ -299,3 +307,20 @@ create policy "cancellations_select_owner" on public.cancellations
 drop policy if exists "absences_select_owner" on public.absences;
 create policy "absences_select_owner" on public.absences
   for select using (exists (select 1 from public.staff where staff.id = auth.uid() and staff.is_owner));
+
+-- Un propriétaire peut aussi CRÉER/MODIFIER/SUPPRIMER une absence pour N'IMPORTE QUEL
+-- coiffeur (pas seulement voir) — c'est ce qui lui permet d'attribuer/retirer une semaine
+-- de travail à un employé depuis l'onglet "Plannings & organisation", sans que l'employé
+-- ait besoin de le faire lui-même.
+drop policy if exists "absences_insert_owner" on public.absences;
+create policy "absences_insert_owner" on public.absences
+  for insert with check (exists (select 1 from public.staff where staff.id = auth.uid() and staff.is_owner));
+
+drop policy if exists "absences_update_owner" on public.absences;
+create policy "absences_update_owner" on public.absences
+  for update using (exists (select 1 from public.staff where staff.id = auth.uid() and staff.is_owner))
+  with check (exists (select 1 from public.staff where staff.id = auth.uid() and staff.is_owner));
+
+drop policy if exists "absences_delete_owner" on public.absences;
+create policy "absences_delete_owner" on public.absences
+  for delete using (exists (select 1 from public.staff where staff.id = auth.uid() and staff.is_owner));

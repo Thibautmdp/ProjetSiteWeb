@@ -1,18 +1,23 @@
 <!--
-  Espace coiffeur — Salon Odette. Page interne réservée à l'équipe (Odette, Karim,
-  Lina), séparée du site public salon-odette-demo.html. Connexion Supabase distincte
-  (mêmes comptes que le reste du site), mais un compte doit être lié à un coiffeur dans
-  la table `staff` pour accéder au tableau de bord — voir salon-odette-schema.sql et
-  salon-odette-coiffeur.js pour le détail. Comptes coiffeur à créer manuellement pour
-  l'instant (Authentication → Add user), pas encore depuis une interface.
+  Espace propriétaire — Salon Odette. Page interne réservée au(x) compte(s) marqué(s)
+  `staff.is_owner = true` (aujourd'hui : Odette, réglé à la main dans Supabase, voir
+  salon-odette-schema.sql), séparée du site public ET de salon-odette-espace-coiffeur.html.
 
-  Un compte marqué `staff.is_owner = true` (aujourd'hui Odette) voit ici EXACTEMENT la
-  même chose qu'un coiffeur normal (Karim/Lina) — volontairement, pour ne pas noyer son
-  planning perso sous les infos de gestion du salon — avec juste un lien en plus vers
-  salon-odette-espace-proprietaire.html, une page à part pour tout ce qui dépasse son
-  propre planning (statistiques du salon, liste des clients, plannings de l'équipe...).
+  Un propriétaire est aussi un coiffeur normal : SON PROPRE planning/absences/stats perso
+  restent sur salon-odette-espace-coiffeur.html (identique à ce que voit Karim/Lina), avec
+  juste un lien "→ Espace propriétaire" qui mène ici. Cette page-ci ne montre RIEN de
+  personnel — seulement ce qui dépasse un seul coiffeur : statistiques du salon entier ou
+  par coiffeur, tous les clients du salon, et le planning de n'importe quel coiffeur.
+
+  Née le 2026-09-04 d'une première version qui mettait tout ça en bas du tableau de bord
+  personnel (sous forme d'onglets) — séparée en page à part car ça noyait le planning
+  perso sous les infos de gestion du salon, peu pratique pour un usage quotidien.
+
+  Connexion Supabase distincte (mêmes comptes que le reste du site, mais un compte doit
+  être ET dans `staff` ET avec `is_owner = true` pour accéder au tableau de bord — un
+  coiffeur normal qui se trompe de page est renvoyé vers l'espace coiffoir habituel).
 -->
-<title>Espace coiffeur — Salon Odette</title>
+<title>Espace propriétaire — Salon Odette</title>
 <style>
   :root {
     --ivoire: #F2EAE1;
@@ -53,14 +58,14 @@
   button { font: inherit; color: inherit; }
   :focus-visible { outline: 2px solid var(--laiton); outline-offset: 3px; }
 
-  .wrap { max-width: 780px; margin: 0 auto; padding: 0 24px; }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 0 24px; }
 
   header.site {
     position: sticky; top: 0; z-index: 20;
     background: color-mix(in srgb, var(--ivoire) 88%, transparent);
     backdrop-filter: blur(8px); border-bottom: 1px solid var(--border);
   }
-  .header-inner { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 24px; max-width: 780px; margin: 0 auto; }
+  .header-inner { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 24px; max-width: 900px; margin: 0 auto; }
   .brand { font-family: 'Bodoni Moda', serif; font-size: 1.05rem; font-style: italic; text-decoration: none; }
   .eyebrow { font-family: 'Space Mono', monospace; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--laiton); }
 
@@ -99,11 +104,6 @@
   .staff-header { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-top: 48px; }
   .staff-header h2 { font-style: italic; font-size: 1.8rem; }
 
-  .next-appt {
-    margin-top: 24px; padding: 16px 20px; background: var(--ivoire-surface);
-    border-left: 3px solid var(--laiton); border-radius: 3px; font-size: 0.95rem;
-  }
-
   .stat-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 28px; }
   @media (max-width: 640px) { .stat-cards { grid-template-columns: 1fr 1fr; } }
   .stat-card {
@@ -119,10 +119,8 @@
     border-radius: 3px; border: 1px solid var(--border);
   }
   .booking-list-item .presta { color: var(--encre-soft); font-size: 0.85rem; display: block; margin-top: 2px; }
-  .booking-action-btn { display: block; background: none; border: none; padding: 0; font: inherit; font-size: 0.82rem; color: var(--encre-soft); text-decoration: underline; cursor: pointer; }
-  .booking-action-btn:hover { color: var(--bordeaux); }
 
-  /* ---------- calendrier de planning (même principe que le calendrier client) ---------- */
+  /* ---------- calendrier de planning (même principe que le calendrier client/coiffeur) ---------- */
   .calendar-nav { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 24px; flex-wrap: wrap; }
   .calendar-nav .btn { padding: 9px 18px; font-size: 0.84rem; }
   .calendar-wrap { margin-top: 18px; overflow-x: auto; padding-bottom: 10px; }
@@ -138,15 +136,28 @@
   .cal-day.closed { opacity: 0.45; }
   .cal-day-closed-label { text-align: center; font-family: 'Space Mono', monospace; font-size: 0.78rem; color: var(--encre-soft); padding: 16px 0; }
 
-  #statsChart svg text { font-family: 'Space Mono', monospace; }
+  /* ---------- onglets + sélecteurs (Statistiques/Clients/Plannings, scope salon-entier/coiffeur) ---------- */
+  .chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip-btn {
+    background: var(--ivoire-surface); border: 1px solid var(--border); color: var(--encre);
+    border-radius: 999px; padding: 8px 18px; font-size: 0.84rem; font-weight: 600; cursor: pointer;
+  }
+  .chip-btn:hover { background: var(--ivoire); }
+  .chip-btn.active { background: var(--bordeaux); color: var(--bordeaux-contrast); border-color: var(--bordeaux); }
+
+  .client-table-wrap { margin-top: 16px; overflow-x: auto; }
+  .client-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  .client-table th, .client-table td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  .client-table th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--encre-soft); font-weight: 600; }
+  .client-table tbody tr:hover { background: var(--ivoire-surface); }
 </style>
 
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@0,500;0,600;1,500&family=Karla:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
 
 <header class="site">
   <div class="header-inner">
-    <a class="brand" href="salon-odette-demo.html">← Salon Odette</a>
-    <span class="eyebrow">Espace coiffeur</span>
+    <a class="brand" href="salon-odette-espace-coiffeur.html">← Espace coiffeur</a>
+    <span class="eyebrow">Espace propriétaire</span>
   </div>
 </header>
 
@@ -156,4 +167,4 @@
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4/dist/umd/supabase.js"></script>
-<script src="salon-odette-coiffeur.js"></script>
+<script src="salon-odette-proprietaire.js"></script>

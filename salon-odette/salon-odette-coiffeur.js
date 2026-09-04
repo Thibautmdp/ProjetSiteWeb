@@ -89,40 +89,29 @@
     automatiquement (pas de système d'email/SMS) — message d'avertissement
     affiché à l'écran pour que le coiffeur pense à le contacter lui-même.
 
-  - Espace propriétaire (2026-09-03) : un coiffeur dont la ligne `staff` a
-    `is_owner = true` (aujourd'hui : Odette, réglé à la main dans Supabase, voir
-    salon-odette-schema.sql) se connecte EXACTEMENT comme les autres — même
-    formulaire, même compte — mais son tableau de bord affiche en plus, sous sa
-    propre partie (identique à celle de n'importe quel coiffeur), une section
-    "Espace propriétaire" organisée en 3 onglets :
-      • Statistiques : mêmes indicateurs que le tableau personnel (RDV à venir,
-        CA estimé, confirmés/annulés ce mois-ci, prestation la plus demandée),
-        avec un sélecteur "Salon entier / Odette / Karim / Lina" pour basculer
-        entre la vue globale et celle d'un coiffeur précis (calculés par
-        computeOwnerStats(scope), pas besoin de se reconnecter avec un autre
-        compte pour comparer).
-      • Clients : la liste de TOUS les clients du salon (prénom, téléphone,
-        email, nombre de RDV, dernier RDV), avec une recherche simple.
-      • Plannings & organisation : le planning hebdomadaire de N'IMPORTE QUEL
-        coiffeur choisi (même principe visuel que le planning personnel plus
-        haut, en lecture seule), plus la liste des absences à venir de TOUTE
-        l'équipe (avec le motif, contrairement à ce qu'un coiffeur voit des
-        autres normalement).
-    Rendu possible par 4 nouvelles règles RLS (bookings/profiles/cancellations/
-    absences "_select_owner") qui donnent un accès en lecture à tout le salon
-    UNIQUEMENT si `staff.is_owner` est vrai pour le compte connecté — un
-    coiffeur normal ne voit toujours que ses propres rendez-vous/clients/
-    absences, comme avant.
+  - Espace propriétaire, sur une AUTRE page (2026-09-04) : un coiffeur dont
+    la ligne `staff` a `is_owner = true` (aujourd'hui : Odette, réglé à la
+    main dans Supabase, voir salon-odette-schema.sql) voit un lien "→ Espace
+    propriétaire" apparaître ici (voir plus bas dans renderDashboard()), vers
+    salon-odette-espace-proprietaire.html + salon-odette-proprietaire.js —
+    une page à part, avec son propre login, qui regroupe tout ce qui dépasse
+    SON PROPRE planning (statistiques du salon entier, liste de tous les
+    clients, planning de n'importe quel coiffeur...). Ce fichier-ci reste
+    volontairement identique pour un coiffeur normal ET pour la propriétaire
+    — elle voit ici exactement ce que voit Karim/Lina, rien de plus, pour ne
+    pas noyer son tableau de bord perso sous les infos de gestion du salon.
+    (Une première version avait tout mis sur cette seule page, sous forme
+    d'onglets ajoutés en dessous du tableau personnel — séparé en deux pages
+    le 2026-09-04 car trop chargé pour un usage quotidien.)
 
   CE QU'IL RESTE À FAIRE / IDÉES POUR LA SUITE
   - Regrouper visuellement une plage d'absence (ex. "14h00 → 17h00" sur une
     seule ligne avec un seul bouton "Retirer") au lieu d'une ligne par
     créneau comme aujourd'hui — nécessite de grouper myAbsences par
     date+motif et détecter les créneaux consécutifs dans renderAbsenceListHtml().
-  - L'espace propriétaire ci-dessus ne couvre que "voir" (clients + stats) : gérer
-    l'équipe (créer un compte coiffeur depuis une interface plutôt qu'à la main
-    dans Supabase), modifier tarifs/prestations, et exporter la liste des
-    clients restent à faire (voir salon-odette-roadmap).
+  - Voir salon-odette-proprietaire.js pour ce qu'il reste à faire côté espace
+    propriétaire (gérer l'équipe/tarifs depuis une interface, exporter les
+    clients...).
 
   FONCTIONS DE CE FICHIER
   - toDateKey(d) / formatDateFr(dateStr) : conversions entre un objet Date JS
@@ -165,33 +154,11 @@
     salon-odette-reservation.js).
   - renderBarChart(counts) : dessine le graphique en barres (SVG) du nombre
     de rendez-vous par prestation.
-  - refreshOwnerSection() : réécrit et recâble tout le `<div id="ownerSection">`
-    à partir de l'état courant (ownerActiveTab/ownerStatsScope/
-    ownerPlanningCoiffeur/ownerPlanningWeekOffset) — appelée une première fois
-    depuis renderDashboard() si currentStaff.is_owner, puis à chaque clic dans
-    la section (changer d'onglet, de coiffeur, de semaine...) au lieu de gérer
-    des mises à jour partielles du DOM, comme le reste du fichier.
-  - renderOwnerSectionHtml() : construit le HTML de la section (titre + barre
-    d'onglets + le contenu du seul onglet actif, délégué à
-    renderOwnerStatsTab()/renderOwnerClientsTab()/renderOwnerPlanningTab()).
-  - computeOwnerStats(scope) : calcule les indicateurs (RDV à venir, CA estimé,
-    confirmés/annulés ce mois-ci, prestation la plus demandée) pour 'all'
-    (salon entier) ou un nom de coiffeur précis, à partir de
-    allBookingsForOwner/allCancellationsForOwner.
-  - buildOwnerCalendarHtml(coiffeurName, weekOffset) : construit le HTML (une
-    chaîne, pas des nœuds DOM comme renderScheduleCalendar plus haut — plus
-    simple à insérer directement dans le fragment de renderOwnerPlanningTab())
-    du planning hebdomadaire d'un coiffeur, à partir de
-    allBookingsForOwnerEnriched (avec prénom client) et allAbsencesForOwner.
-  - renderOwnerTeamAbsencesHtml() : liste des absences à venir de toute
-    l'équipe (avec motif), pour l'onglet "Plannings & organisation".
-  - wireOwnerSection(container) : câble les clics (onglets, sélecteur de
-    coiffeur/scope, navigation semaine, recherche client) — chacun met à jour
-    une variable d'état puis appelle refreshOwnerSection().
 
   DÉPEND DE : rien d'autre que la librairie Supabase (chargée par CDN dans
   salon-odette-espace-coiffeur.html) — voir la remarque ci-dessus, ce fichier
-  est volontairement indépendant du reste du site.
+  est volontairement indépendant du reste du site (et de
+  salon-odette-proprietaire.js, qui a lui aussi son propre client Supabase).
   ============================================================================
 */
 
@@ -218,9 +185,6 @@ var PRESTATION_PRICES = {
 var JOURS = ['dim', 'lun', 'mar', 'mer', 'jeu', 'ven', 'sam'];
 var MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
 var HEURES = ['9h00', '10h00', '11h00', '14h00', '15h00', '16h00', '17h00'];
-// Même liste que COIFFEURS dans salon-odette-reservation.js (fichier volontairement
-// indépendant, voir en-tête) — sert au détail par coiffeur de l'espace propriétaire.
-var COIFFEURS = ['Odette', 'Karim', 'Lina'];
 var MAX_WEEKS_AHEAD = 7;
 var staffWeekOffset = 0;
 
@@ -229,21 +193,6 @@ var currentStaff = null; // { id, nom, is_owner }
 var myBookings = []; // rendez-vous du coiffeur connecté, avec clientPrenom/clientTelephone ajoutés
 var myAbsences = []; // { id, coiffeur, date, motif } — jours d'absence du coiffeur connecté
 var myCancellations = []; // { id, coiffeur, prestation, appointment_at, cancelled_at } — historique des annulations
-
-// Chargées UNIQUEMENT si currentStaff.is_owner est vrai (voir loadDashboardData) —
-// vue sur le salon entier pour renderOwnerSectionHtml(), pas juste "mes" données.
-var allBookingsForOwner = []; // tous les rendez-vous, tous coiffeurs confondus (bruts)
-var allBookingsForOwnerEnriched = []; // les mêmes + clientPrenom/clientTelephone (onglet Plannings)
-var allAbsencesForOwner = []; // toutes les absences, tous coiffeurs confondus
-var allCancellationsForOwner = []; // toutes les annulations, tous coiffeurs confondus
-var allClients = []; // tous les profils clients (public.profiles), pas juste "mes" clients
-
-// État de la section "Espace propriétaire" (voir refreshOwnerSection) — remis à zéro à la
-// déconnexion pour qu'un autre coiffeur qui se connecte ensuite reparte d'un état propre.
-var ownerActiveTab = 'stats'; // 'stats' | 'clients' | 'planning'
-var ownerStatsScope = 'all'; // 'all' (salon entier) ou un nom de coiffeur précis
-var ownerPlanningCoiffeur = null; // initialisé au premier rendu (son propre nom par défaut)
-var ownerPlanningWeekOffset = 0;
 
 // Vrai pour une date (chaîne ISO ou objet Date) tombant dans le mois calendaire en cours.
 function isThisMonth(dateVal) {
@@ -340,30 +289,13 @@ function checkStaffAndLoad() {
 
 function loadDashboardData() {
   var myGeneration = sessionGeneration;
-  var isOwner = !!currentStaff.is_owner;
-
   // Rendez-vous, absences et annulations récupérés en parallèle (indépendants les uns des
-  // autres) — SES PROPRES données, comme n'importe quel coiffeur (un propriétaire reste
-  // un coiffeur, avec son propre planning en plus de la vue salon entier ci-dessous).
-  var requests = [
+  // autres).
+  Promise.all([
     sb.from('bookings').select('*').eq('coiffeur', currentStaff.nom).order('appointment_at', { ascending: true }),
     sb.from('absences').select('*').eq('coiffeur', currentStaff.nom).order('date', { ascending: true }),
     sb.from('cancellations').select('*').eq('coiffeur', currentStaff.nom)
-  ];
-  // Propriétaire uniquement (staff.is_owner, voir salon-odette-schema.sql) : en plus de ce
-  // qui précède, une vue sur TOUT le salon — tous les rendez-vous, toutes les annulations
-  // (peu importe le coiffeur) et la liste complète des clients — pour
-  // renderOwnerSectionHtml(). Autorisé par les règles RLS "..._select_owner".
-  if (isOwner) {
-    requests.push(
-      sb.from('bookings').select('*').order('appointment_at', { ascending: true }),
-      sb.from('cancellations').select('*'),
-      sb.from('profiles').select('*').order('prenom', { ascending: true }),
-      sb.from('absences').select('*').order('date', { ascending: true })
-    );
-  }
-
-  Promise.all(requests).then(function (results) {
+  ]).then(function (results) {
     if (myGeneration !== sessionGeneration) return;
     var bookingsRes = results[0];
     var absencesRes = results[1];
@@ -372,42 +304,6 @@ function loadDashboardData() {
     myAbsences = absencesRes.data || [];
     if (cancellationsRes.error) console.error(cancellationsRes.error);
     myCancellations = cancellationsRes.data || [];
-
-    if (isOwner) {
-      var allBookingsRes = results[3];
-      var allCancellationsRes = results[4];
-      var allProfilesRes = results[5];
-      var allAbsencesRes = results[6];
-      if (allBookingsRes.error) console.error(allBookingsRes.error);
-      allBookingsForOwner = allBookingsRes.data || [];
-      if (allCancellationsRes.error) console.error(allCancellationsRes.error);
-      allCancellationsForOwner = allCancellationsRes.data || [];
-      if (allProfilesRes.error) console.error(allProfilesRes.error);
-      allClients = allProfilesRes.data || [];
-      if (allAbsencesRes.error) console.error(allAbsencesRes.error);
-      allAbsencesForOwner = allAbsencesRes.data || [];
-
-      // Enrichit chaque rendez-vous du salon avec le prénom/téléphone du client, pour
-      // l'affichage de l'onglet "Plannings & organisation" (qui montre qui est réservé,
-      // comme le planning personnel plus haut) — même limitation que pour myBookings :
-      // bookings.user_id référence auth.users, pas profiles, donc pas de jointure
-      // automatique possible côté PostgREST, d'où cette combinaison faite à la main.
-      var ownerProfilesById = {};
-      allClients.forEach(function (p) { ownerProfilesById[p.id] = p; });
-      allBookingsForOwnerEnriched = allBookingsForOwner.map(function (b) {
-        var p = ownerProfilesById[b.user_id];
-        return {
-          id: b.id,
-          label: b.label,
-          prestation: b.prestation,
-          appointment_at: b.appointment_at,
-          status: b.status || 'pending',
-          coiffeur: b.coiffeur,
-          clientPrenom: p ? p.prenom : 'client inconnu',
-          clientTelephone: p ? p.telephone : '—'
-        };
-      });
-    }
 
     if (bookingsRes.error) { console.error(bookingsRes.error); return; }
     var bookings = bookingsRes.data || [];
@@ -501,8 +397,10 @@ function renderDashboard() {
     : '<p class="account-empty" style="margin-top:16px;">Aucun rendez-vous à venir.</p>';
 
   panel.innerHTML =
-    '<div class="staff-header"><h2>Bonjour, ' + escapeHtml(currentStaff.nom) + (currentStaff.is_owner ? ' <span class="owner-badge">Propriétaire</span>' : '') + '</h2><button type="button" id="staffLogoutBtn" class="btn btn-ghost">Se déconnecter</button></div>' +
-    '<p class="account-sub">Connecté en tant que ' + escapeHtml(currentSession.user.email) + '</p>' +
+    '<div class="staff-header"><h2>Bonjour, ' + escapeHtml(currentStaff.nom) + '</h2><button type="button" id="staffLogoutBtn" class="btn btn-ghost">Se déconnecter</button></div>' +
+    '<p class="account-sub">Connecté en tant que ' + escapeHtml(currentSession.user.email) +
+      (currentStaff.is_owner ? ' — <a href="salon-odette-espace-proprietaire.html">Espace propriétaire →</a>' : '') +
+    '</p>' +
     (nextBooking
       ? '<p class="next-appt">Prochain rendez-vous : <strong>' + escapeHtml(nextBooking.label) + '</strong> — ' + escapeHtml(nextBooking.prestation) + ' avec ' + escapeHtml(nextBooking.clientPrenom) + '</p>'
       : '<p class="next-appt">Aucun rendez-vous à venir pour l\'instant.</p>') +
@@ -543,11 +441,7 @@ function renderDashboard() {
     renderAbsenceListHtml() +
     '<h3 style="margin-top:40px; font-size:1.3rem;">Prestations les plus demandées</h3>' +
     (topPrestation ? '<p class="account-sub" style="margin-top:8px;">La plus demandée : <strong>' + escapeHtml(topPrestation) + '</strong> (' + prestationCounts[topPrestation] + ' rendez-vous au total)</p>' : '<p class="account-empty">Pas encore assez de données.</p>') +
-    '<div id="statsChart" style="margin-top:12px;"></div>' +
-    // Réservé vide ici, rempli à part plus bas si currentStaff.is_owner — voir pourquoi
-    // (ne pas réécrire panel.innerHTML une deuxième fois, ça détruirait les écouteurs
-    // d'événements déjà posés ci-dessus) dans le commentaire juste après ce template.
-    '<div id="ownerSection"></div>';
+    '<div id="statsChart" style="margin-top:12px;"></div>';
 
   document.getElementById('staffLogoutBtn').addEventListener('click', function () {
     sessionGeneration++;
@@ -555,15 +449,6 @@ function renderDashboard() {
       currentSession = null;
       currentStaff = null;
       myBookings = [];
-      allBookingsForOwner = [];
-      allBookingsForOwnerEnriched = [];
-      allAbsencesForOwner = [];
-      allCancellationsForOwner = [];
-      allClients = [];
-      ownerActiveTab = 'stats';
-      ownerStatsScope = 'all';
-      ownerPlanningCoiffeur = null;
-      ownerPlanningWeekOffset = 0;
       renderLoginForm();
     });
   });
@@ -672,12 +557,6 @@ function renderDashboard() {
 
   renderScheduleCalendar();
   renderBarChart(prestationCounts);
-
-  // Espace propriétaire : rempli à part (pas via panel.innerHTML += ..., qui redessinerait
-  // tout le panneau et détruirait les écouteurs d'événements posés juste au-dessus) dans un
-  // <div id="ownerSection"> vide réservé dans le template plus haut. N'affiche rien pour un
-  // coiffeur normal.
-  if (currentStaff.is_owner) refreshOwnerSection();
 }
 
 function renderAbsenceListHtml() {
@@ -790,276 +669,6 @@ function renderScheduleCalendar() {
 
     dayCard.appendChild(slotsWrap);
     calendarEl.appendChild(dayCard);
-  }
-}
-
-// Réécrit et recâble tout le <div id="ownerSection"> à partir de l'état courant
-// (ownerActiveTab/ownerStatsScope/ownerPlanningCoiffeur/ownerPlanningWeekOffset). Appelée
-// une première fois depuis renderDashboard() si currentStaff.is_owner, puis à chaque clic
-// dans la section (changer d'onglet, de coiffeur, de semaine, taper dans la recherche...) —
-// même logique que le reste du fichier : on reconstruit tout depuis l'état plutôt que de
-// faire des mises à jour partielles du DOM.
-function refreshOwnerSection() {
-  var el = document.getElementById('ownerSection');
-  if (!el || !currentStaff || !currentStaff.is_owner) return;
-  el.innerHTML = renderOwnerSectionHtml();
-  wireOwnerSection(el);
-}
-
-// Calcule les indicateurs (RDV à venir, CA estimé, confirmés/annulés ce mois-ci,
-// prestation la plus demandée) pour 'all' (salon entier) ou un nom de coiffeur précis, à
-// partir de allBookingsForOwner/allCancellationsForOwner. Mêmes règles de calcul que le
-// tableau de bord personnel plus haut (un no_show est exclu du CA et des prestations).
-function computeOwnerStats(scope) {
-  var now = Date.now();
-  var bookings = scope === 'all' ? allBookingsForOwner : allBookingsForOwner.filter(function (b) { return b.coiffeur === scope; });
-  var cancellations = scope === 'all' ? allCancellationsForOwner : allCancellationsForOwner.filter(function (c) { return c.coiffeur === scope; });
-  var counted = bookings.filter(function (b) { return b.status !== 'no_show'; });
-  var upcoming = bookings.filter(function (b) { return !b.appointment_at || new Date(b.appointment_at).getTime() >= now; });
-  var revenue = counted.reduce(function (sum, b) {
-    var price = PRESTATION_PRICES[b.prestation];
-    return sum + (typeof price === 'number' ? price : 0);
-  }, 0);
-  var prestationCounts = {};
-  counted.forEach(function (b) { prestationCounts[b.prestation] = (prestationCounts[b.prestation] || 0) + 1; });
-  var topPrestation = Object.keys(prestationCounts).sort(function (a, b) { return prestationCounts[b] - prestationCounts[a]; })[0];
-  return {
-    upcoming: upcoming.length,
-    revenue: revenue,
-    confirmedThisMonth: bookings.filter(function (b) { return b.status === 'attended' && isThisMonth(b.appointment_at); }).length,
-    cancelledThisMonth: cancellations.filter(function (c) { return isThisMonth(c.appointment_at); }).length,
-    topPrestation: topPrestation,
-    topPrestationCount: topPrestation ? prestationCounts[topPrestation] : 0
-  };
-}
-
-// Construit le HTML de la section "Espace propriétaire" : titre + barre d'onglets +
-// le contenu du seul onglet actif (délégué aux 3 fonctions render...Tab ci-dessous).
-function renderOwnerSectionHtml() {
-  if (!ownerPlanningCoiffeur) ownerPlanningCoiffeur = currentStaff.nom; // par défaut, elle-même
-
-  var tabLabels = { stats: 'Statistiques', clients: 'Clients', planning: 'Plannings & organisation' };
-  var tabsHtml = '<div class="chip-row" style="margin-top:20px;">' +
-    Object.keys(tabLabels).map(function (tab) {
-      return '<button type="button" class="chip-btn' + (ownerActiveTab === tab ? ' active' : '') + '" data-owner-tab="' + tab + '">' + tabLabels[tab] + '</button>';
-    }).join('') +
-  '</div>';
-
-  var bodyHtml = ownerActiveTab === 'clients' ? renderOwnerClientsTab()
-    : ownerActiveTab === 'planning' ? renderOwnerPlanningTab()
-    : renderOwnerStatsTab();
-
-  return (
-    '<h2 style="margin-top:56px; font-style:italic;">Espace propriétaire</h2>' +
-    '<p class="account-sub">Vue sur l\'ensemble du salon, en plus de votre propre planning ci-dessus — visible uniquement parce que votre compte est marqué "propriétaire" dans Supabase (staff.is_owner).</p>' +
-    tabsHtml +
-    '<div style="margin-top:24px;">' + bodyHtml + '</div>'
-  );
-}
-
-// Onglet "Statistiques" : un sélecteur "Salon entier / Odette / Karim / Lina" (ownerStatsScope)
-// au-dessus des mêmes 4 cartes que le tableau de bord personnel, recalculées pour le scope
-// choisi — évite d'avoir à se reconnecter avec un autre compte pour comparer les coiffeurs.
-function renderOwnerStatsTab() {
-  var scopeHtml = '<div class="chip-row">' +
-    '<button type="button" class="chip-btn' + (ownerStatsScope === 'all' ? ' active' : '') + '" data-owner-scope="all">Salon entier</button>' +
-    COIFFEURS.map(function (nom) {
-      return '<button type="button" class="chip-btn' + (ownerStatsScope === nom ? ' active' : '') + '" data-owner-scope="' + escapeHtml(nom) + '">' + escapeHtml(nom) + '</button>';
-    }).join('') +
-  '</div>';
-
-  var s = computeOwnerStats(ownerStatsScope);
-  var title = ownerStatsScope === 'all' ? 'Salon entier' : ownerStatsScope;
-
-  return scopeHtml +
-    '<h3 style="margin-top:24px; font-size:1.2rem;">' + escapeHtml(title) + '</h3>' +
-    '<div class="stat-cards" style="margin-top:16px;">' +
-      '<div class="stat-card"><div class="stat-num mono">' + s.upcoming + '</div><div class="stat-label">RDV à venir</div></div>' +
-      '<div class="stat-card"><div class="stat-num mono">' + s.revenue + '&nbsp;€</div><div class="stat-label">CA estimé</div></div>' +
-      '<div class="stat-card"><div class="stat-num mono">' + s.confirmedThisMonth + '</div><div class="stat-label">confirmés ce mois-ci</div></div>' +
-      '<div class="stat-card"><div class="stat-num mono">' + s.cancelledThisMonth + '</div><div class="stat-label">annulés ce mois-ci</div></div>' +
-    '</div>' +
-    (s.topPrestation
-      ? '<p class="account-sub" style="margin-top:16px;">Prestation la plus demandée : <strong>' + escapeHtml(s.topPrestation) + '</strong> (' + s.topPrestationCount + ' rendez-vous)</p>'
-      : '<p class="account-empty" style="margin-top:16px;">Pas encore assez de données.</p>');
-}
-
-// Onglet "Clients" : liste de TOUS les clients du salon, avec nb de RDV et dernier
-// rendez-vous calculés à partir de allBookingsForOwner (regroupés par user_id —
-// bookings.user_id référence auth.users, pas profiles, pas de jointure automatique
-// possible côté PostgREST, d'où cette combinaison faite à la main, voir plus haut).
-function renderOwnerClientsTab() {
-  var bookingsByClient = {};
-  allBookingsForOwner.forEach(function (b) {
-    if (!bookingsByClient[b.user_id]) bookingsByClient[b.user_id] = [];
-    bookingsByClient[b.user_id].push(b);
-  });
-  var clientRowsHtml = allClients.length
-    ? allClients.map(function (c) {
-        var theirBookings = bookingsByClient[c.id] || [];
-        var last = theirBookings.slice().sort(function (a, b) { return new Date(b.appointment_at || 0).getTime() - new Date(a.appointment_at || 0).getTime(); })[0];
-        return '<tr>' +
-          '<td>' + escapeHtml(c.prenom) + '</td>' +
-          '<td>' + escapeHtml(c.telephone) + '</td>' +
-          '<td>' + escapeHtml(c.email || '—') + '</td>' +
-          '<td class="mono">' + theirBookings.length + '</td>' +
-          '<td>' + (last ? escapeHtml(last.label) : '—') + '</td>' +
-        '</tr>';
-      }).join('')
-    : '<tr><td colspan="5" class="account-empty">Aucun client pour l\'instant.</td></tr>';
-
-  return '<h3 style="font-size:1.2rem;">Clients du salon (' + allClients.length + ')</h3>' +
-    '<div class="field" style="max-width:280px; margin-top:16px;"><label for="clientSearchInput">Rechercher un client</label><input type="text" id="clientSearchInput" placeholder="Prénom, téléphone, email..."></div>' +
-    '<div class="client-table-wrap"><table class="client-table" id="clientTable"><thead><tr><th>Prénom</th><th>Téléphone</th><th>Email</th><th>RDV</th><th>Dernier RDV</th></tr></thead><tbody>' + clientRowsHtml + '</tbody></table></div>';
-}
-
-// Onglet "Plannings & organisation" : le planning hebdomadaire de N'IMPORTE QUEL coiffeur
-// choisi (ownerPlanningCoiffeur), en lecture seule, même principe visuel que le planning
-// personnel plus haut — plus les absences à venir de toute l'équipe en dessous.
-function renderOwnerPlanningTab() {
-  var pickerHtml = '<div class="chip-row">' +
-    COIFFEURS.map(function (nom) {
-      return '<button type="button" class="chip-btn' + (ownerPlanningCoiffeur === nom ? ' active' : '') + '" data-owner-planning-coiffeur="' + escapeHtml(nom) + '">' + escapeHtml(nom) + '</button>';
-    }).join('') +
-  '</div>';
-
-  var monday = getMonday(new Date());
-  var weekStart = new Date(monday.getTime());
-  weekStart.setDate(weekStart.getDate() + ownerPlanningWeekOffset * 7);
-  var weekEnd = new Date(weekStart.getTime());
-  weekEnd.setDate(weekEnd.getDate() + 6);
-  var weekLabel = weekStart.getDate() + ' ' + MOIS[weekStart.getMonth()] + ' – ' + weekEnd.getDate() + ' ' + MOIS[weekEnd.getMonth()];
-
-  return pickerHtml +
-    '<div class="calendar-nav" style="margin-top:20px;">' +
-      '<button type="button" class="btn btn-ghost" data-owner-planning-nav="-1">← Semaine précédente</button>' +
-      '<span class="mono">' + weekLabel + '</span>' +
-      '<button type="button" class="btn btn-ghost" data-owner-planning-nav="1">Semaine suivante →</button>' +
-    '</div>' +
-    '<div class="calendar-wrap"><div class="calendar">' + buildOwnerCalendarHtml(ownerPlanningCoiffeur, ownerPlanningWeekOffset) + '</div></div>' +
-    '<h3 style="margin-top:32px; font-size:1.1rem;">Absences de toute l\'équipe</h3>' +
-    renderOwnerTeamAbsencesHtml();
-}
-
-// Construit le HTML (une chaîne, pas des nœuds DOM comme renderScheduleCalendar plus haut —
-// plus simple à insérer directement dans le fragment de renderOwnerPlanningTab()) du planning
-// hebdomadaire d'un coiffeur donné, à partir de allBookingsForOwnerEnriched (avec prénom
-// client) et allAbsencesForOwner (toutes personnes confondues, filtrées ici sur ce coiffeur).
-function buildOwnerCalendarHtml(coiffeurName, weekOffset) {
-  var bookingsByLabel = {};
-  allBookingsForOwnerEnriched.filter(function (b) { return b.coiffeur === coiffeurName; }).forEach(function (b) { bookingsByLabel[b.label] = b; });
-
-  var absenceDates = {};
-  var absentSlotsByLabel = {};
-  allAbsencesForOwner.filter(function (a) { return a.coiffeur === coiffeurName; }).forEach(function (a) {
-    if (a.heure === 'journee') {
-      absenceDates[a.date] = true;
-    } else {
-      var parts = a.date.split('-');
-      var absDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-      var absDow = absDate.getDay();
-      var absLabel = JOURS[absDow].charAt(0).toUpperCase() + JOURS[absDow].slice(1) + ' ' + absDate.getDate() + ' ' + MOIS[absDate.getMonth()] + ' à ' + a.heure;
-      absentSlotsByLabel[absLabel] = true;
-    }
-  });
-
-  var monday = getMonday(new Date());
-  var weekStart = new Date(monday.getTime());
-  weekStart.setDate(weekStart.getDate() + weekOffset * 7);
-
-  var daysHtml = '';
-  for (var dayIndex = 0; dayIndex < 7; dayIndex++) {
-    var d = new Date(weekStart.getTime());
-    d.setDate(weekStart.getDate() + dayIndex);
-    var dow = d.getDay();
-    var isClosedDay = dow === 0 || dow === 1;
-    var isAbsentDay = !!absenceDates[toDateKey(d)];
-
-    daysHtml += '<div class="cal-day' + ((isClosedDay || isAbsentDay) ? ' closed' : '') + '">' +
-      '<div class="cal-day-head">' + JOURS[dow] + '<strong>' + d.getDate() + ' ' + MOIS[d.getMonth()] + '</strong></div>';
-
-    if (isClosedDay || isAbsentDay) {
-      daysHtml += '<div class="cal-day-closed-label">' + (isClosedDay ? 'Fermé' : 'Absent(e)') + '</div></div>';
-      continue;
-    }
-
-    daysHtml += '<div class="cal-slots">';
-    HEURES.forEach(function (heure) {
-      var label = JOURS[dow].charAt(0).toUpperCase() + JOURS[dow].slice(1) + ' ' + d.getDate() + ' ' + MOIS[d.getMonth()] + ' à ' + heure;
-      var booking = bookingsByLabel[label];
-      if (booking) {
-        var statusIcon = booking.status === 'attended' ? ' ✓' : (booking.status === 'no_show' ? ' ✗' : '');
-        daysHtml += '<div class="cal-slot busy' + (booking.status === 'no_show' ? ' no-show' : '') + '" title="' + escapeHtml(booking.prestation + ' — ' + booking.clientPrenom + ' (' + booking.clientTelephone + ')') + '">' + escapeHtml(heure) + statusIcon + '<br>' + escapeHtml(booking.clientPrenom) + '</div>';
-      } else if (absentSlotsByLabel[label]) {
-        daysHtml += '<div class="cal-slot absent-slot">' + escapeHtml(heure) + '<br>Absent(e)</div>';
-      } else {
-        daysHtml += '<div class="cal-slot">' + escapeHtml(heure) + '</div>';
-      }
-    });
-    daysHtml += '</div></div>';
-  }
-
-  return daysHtml;
-}
-
-// Absences à venir de toute l'équipe, motif inclus (contrairement à ce qu'un coiffeur voit
-// des autres normalement — voir la remarque dans l'en-tête sur la règle RLS dédiée).
-function renderOwnerTeamAbsencesHtml() {
-  var todayKey = toDateKey(new Date());
-  var upcoming = allAbsencesForOwner
-    .filter(function (a) { return a.date >= todayKey; })
-    .sort(function (a, b) { return a.date < b.date ? -1 : (a.date > b.date ? 1 : 0); });
-  if (!upcoming.length) return '<p class="account-empty" style="margin-top:16px;">Aucune absence prévue dans l\'équipe.</p>';
-  return '<div class="booking-list" style="margin-top:16px;">' + upcoming.map(function (a) {
-    var quand = a.heure === 'journee' ? 'Toute la journée' : escapeHtml(a.heure);
-    return '<div class="booking-list-item">' + escapeHtml(a.coiffeur) + ' — ' + escapeHtml(formatDateFr(a.date)) +
-      '<span class="presta">' + quand + (a.motif ? ' · ' + escapeHtml(a.motif) : '') + '</span></div>';
-  }).join('') + '</div>';
-}
-
-// Câble les clics de la section propriétaire (onglets, sélecteur de scope/coiffeur,
-// navigation semaine, recherche client) — chacun met à jour une variable d'état puis
-// appelle refreshOwnerSection() pour tout redessiner (voir cette fonction plus haut).
-function wireOwnerSection(container) {
-  container.querySelectorAll('[data-owner-tab]').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      ownerActiveTab = btn.getAttribute('data-owner-tab');
-      refreshOwnerSection();
-    });
-  });
-
-  container.querySelectorAll('[data-owner-scope]').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      ownerStatsScope = btn.getAttribute('data-owner-scope');
-      refreshOwnerSection();
-    });
-  });
-
-  container.querySelectorAll('[data-owner-planning-coiffeur]').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      ownerPlanningCoiffeur = btn.getAttribute('data-owner-planning-coiffeur');
-      ownerPlanningWeekOffset = 0;
-      refreshOwnerSection();
-    });
-  });
-
-  container.querySelectorAll('[data-owner-planning-nav]').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      ownerPlanningWeekOffset += parseInt(btn.getAttribute('data-owner-planning-nav'), 10);
-      refreshOwnerSection();
-    });
-  });
-
-  // Recherche client : filtre simple, côté client, sur le texte de chaque ligne — pas
-  // besoin d'aller rechercher en base pour une liste de cette taille.
-  var searchInput = container.querySelector('#clientSearchInput');
-  if (searchInput) {
-    searchInput.addEventListener('input', function () {
-      var q = searchInput.value.trim().toLowerCase();
-      container.querySelectorAll('#clientTable tbody tr').forEach(function (row) {
-        row.hidden = q.length > 0 && row.textContent.toLowerCase().indexOf(q) === -1;
-      });
-    });
   }
 }
 
