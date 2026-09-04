@@ -50,12 +50,19 @@
     distinction visuelle avec un vrai rendez-vous). Le motif (congés,
     maladie...) n'est jamais révélé au client — voir la vue publique
     `absence_days` dans salon-odette-schema.sql.
+  - Emploi du temps récurrent (2026-09-04) : la propriétaire règle, dans
+    salon-odette-proprietaire.js (onglet "Horaires"), les jours de la semaine
+    où chaque coiffeur travaille normalement (ex. Karim ne travaille jamais
+    le vendredi). buildCalendar() interroge en plus la table publique
+    `weekly_day_off` (jour_semaine + coiffeur, voir salon-odette-schema.sql)
+    et ferme ces jours-là exactement comme une absence ponctuelle — le client
+    voit "Indisponible" sans savoir si c'est un jour de repos habituel ou une
+    exception cette semaine précise.
 
   CE QU'IL RESTE À FAIRE (voir aussi la liste complète du projet)
   - La liste des 3 coiffeurs est encore codée en dur ici (COIFFEURS) — pas de
-    vraie table `coiffeurs` en base, puisqu'il n'y a pas encore d'espace
-    propriétaire pour gérer l'équipe (ajouter/retirer quelqu'un, horaires
-    individuels). À revoir quand salon-odette-coiffeur.js sera construit.
+    vraie table `coiffeurs` en base, puisqu'il n'y a pas d'interface pour
+    ajouter/retirer quelqu'un de l'équipe (toujours à la main dans Supabase).
   - Durée variable selon la prestation (une couleur prend plus de temps
     qu'une coupe ; tous les créneaux sont traités pareil aujourd'hui).
   - Liste d'attente quand un jour est complet.
@@ -80,13 +87,15 @@
   - labelFromDateAndHeure(dateStr, heure) : reconstruit un libellé de créneau
     ("Mer 3 sept à 14h00") à partir d'une date Postgres et d'une heure — sert
     à traiter une absence "créneau précis" comme un créneau déjà pris.
-  - buildCalendar() : récupère les créneaux pris ET les jours/créneaux
-    d'absence CHEZ LE COIFFEUR ACTUELLEMENT SÉLECTIONNÉ (booked_slots +
-    absence_days filtrées), puis appelle renderCalendarGrid() pour dessiner
+  - buildCalendar() : récupère les créneaux pris, les jours/créneaux
+    d'absence ET les jours de repos habituels (emploi du temps récurrent)
+    CHEZ LE COIFFEUR ACTUELLEMENT SÉLECTIONNÉ (booked_slots + absence_days +
+    weekly_day_off filtrées), puis appelle renderCalendarGrid() pour dessiner
     le calendrier.
-  - renderCalendarGrid(takenLabels, absentDates) : construit réellement la
-    grille du calendrier (jours, créneaux, état grisé/barré/cliquable/fermé
-    pour cause d'absence).
+  - renderCalendarGrid(takenLabels, absentDates, daysOffOfWeek) : construit
+    réellement la grille du calendrier (jours, créneaux, état grisé/barré/
+    cliquable/fermé pour cause d'absence OU de jour de repos habituel —
+    daysOffOfWeek, indexé par jour de la semaine 0-6, traité pareil).
   - startReschedule(booking) : point d'entrée appelé par salon-odette-client.js
     quand on clique "Reprogrammer" — bascule en mode reprogrammation, pré-
     sélectionne le coiffeur du rendez-vous d'origine, et redessine tout
@@ -225,16 +234,20 @@ function labelFromDateAndHeure(dateStr, heure) {
 function buildCalendar() {
   var calendarEl = document.getElementById('calendar');
   if (!calendarEl) return;
-  // "booked_slots" (label + coiffeur) et "absence_days" (date + heure + coiffeur) sont deux
-  // vues publiques qui n'exposent que le strict nécessaire pour griser le calendrier —
-  // jamais qui a réservé, ni pourquoi un coiffeur est absent (voir salon-odette-schema.sql).
-  // On ne regarde que ce qui concerne le COIFFEUR ACTUELLEMENT SÉLECTIONNÉ.
+  // "booked_slots" (label + coiffeur), "absence_days" (date + heure + coiffeur) et
+  // "weekly_day_off" (jour_semaine + coiffeur) sont trois vues/tables publiques qui
+  // n'exposent que le strict nécessaire pour griser le calendrier — jamais qui a réservé,
+  // ni pourquoi un coiffeur est absent ou ne travaille pas un jour donné (voir
+  // salon-odette-schema.sql). On ne regarde que ce qui concerne le COIFFEUR ACTUELLEMENT
+  // SÉLECTIONNÉ.
   Promise.all([
     sb.from('booked_slots').select('label').eq('coiffeur', selectedCoiffeur),
-    sb.from('absence_days').select('date, heure').eq('coiffeur', selectedCoiffeur)
+    sb.from('absence_days').select('date, heure').eq('coiffeur', selectedCoiffeur),
+    sb.from('weekly_day_off').select('jour_semaine').eq('coiffeur', selectedCoiffeur)
   ]).then(function (results) {
     var slotsRes = results[0];
     var absencesRes = results[1];
+    var daysOffRes = results[2];
     var takenLabels = {};
     (slotsRes.error ? [] : (slotsRes.data || [])).forEach(function (row) { takenLabels[row.label] = true; });
     if (slotsRes.error) console.error(slotsRes.error);
@@ -248,11 +261,18 @@ function buildCalendar() {
       }
     });
     if (absencesRes.error) console.error(absencesRes.error);
-    renderCalendarGrid(takenLabels, absentDates);
+    // Jours de la semaine (0=dim...6=sam) où ce coiffeur ne travaille JAMAIS normalement
+    // (emploi du temps récurrent réglé par la propriétaire, voir salon-odette-proprietaire.js) —
+    // fermé pour le client exactement comme une absence ponctuelle, sans distinction visuelle
+    // entre "c'est son jour de repos habituel" et "il/elle est en congés cette semaine-là".
+    var daysOffOfWeek = {};
+    (daysOffRes.error ? [] : (daysOffRes.data || [])).forEach(function (row) { daysOffOfWeek[row.jour_semaine] = true; });
+    if (daysOffRes.error) console.error(daysOffRes.error);
+    renderCalendarGrid(takenLabels, absentDates, daysOffOfWeek);
   });
 }
 
-function renderCalendarGrid(takenLabels, absentDates) {
+function renderCalendarGrid(takenLabels, absentDates, daysOffOfWeek) {
   var calendarEl = document.getElementById('calendar');
   if (!calendarEl) return;
   calendarEl.innerHTML = '';
@@ -282,7 +302,10 @@ function renderCalendarGrid(takenLabels, absentDates) {
     var dow = d.getDay();
     var isClosedDay = dow === 0 || dow === 1;
     var isPastDay = d.getTime() < today.getTime();
-    var isAbsentDay = !!absentDates[toDateKey(d)];
+    // Fermé soit à cause d'une absence ponctuelle ce jour précis, soit parce que c'est un
+    // jour de repos habituel de ce coiffeur (emploi du temps récurrent) — même traitement,
+    // le client ne voit "Indisponible" dans les deux cas sans savoir lequel.
+    var isAbsentDay = !!absentDates[toDateKey(d)] || (!isClosedDay && !!daysOffOfWeek[dow]);
 
     var dayCard = document.createElement('div');
     dayCard.className = 'cal-day' + (isClosedDay || isPastDay || isAbsentDay ? ' closed' : '');

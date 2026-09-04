@@ -150,6 +150,20 @@
   .client-table th, .client-table td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
   .client-table th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--encre-soft); font-weight: 600; }
   .client-table tbody tr:hover { background: var(--ivoire-surface); }
+
+  /* ---------- onglet "Vue mensuelle" (qui a travaillé quel jour) ---------- */
+  .month-table-wrap { margin-top: 16px; overflow-x: auto; }
+  .month-table { border-collapse: collapse; font-size: 0.78rem; font-family: 'Space Mono', monospace; }
+  .month-table th, .month-table td { border: 1px solid var(--border); padding: 6px 8px; text-align: center; min-width: 28px; }
+  .month-table thead th { background: var(--ivoire-surface); font-weight: 600; }
+  .month-table th:first-child, .month-table td:first-child {
+    text-align: left; font-family: 'Karla', sans-serif; font-weight: 600; white-space: nowrap;
+    min-width: 90px; position: sticky; left: 0; background: var(--ivoire);
+  }
+  .month-cell-closed { color: var(--encre-soft); opacity: 0.35; }
+  .month-cell-off { color: var(--encre-soft); background: var(--ivoire-surface); }
+  .month-cell-absent { color: var(--bordeaux); font-weight: 700; }
+  .month-cell-work { color: var(--encre); font-weight: 600; }
 </style>
 
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@0,500;0,600;1,500&family=Karla:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">

@@ -13,7 +13,13 @@
     propriétaire → renvoyé vers son espace coiffeur habituel.
   - Donner une vue sur TOUT le salon (pas "mes" données comme sur la page
     coiffeur) : statistiques par coiffeur ou salon entier, tous les clients,
-    planning de n'importe quel coiffeur — organisé en 3 onglets.
+    horaires récurrents et planning de n'importe quel coiffeur — organisé en
+    5 onglets.
+  - Laisser la propriétaire ORGANISER réellement le travail de l'équipe (pas
+    juste consulter) : décider quels jours chaque coiffeur travaille
+    normalement (onglet Horaires), attribuer/retirer une semaine
+    exceptionnelle (onglet Plannings & organisation), et vérifier après coup
+    qui a travaillé quel jour sur un mois entier (onglet Vue mensuelle).
 
   NÉ LE 2026-09-04 d'une scission : une première version affichait tout ça en
   bas du tableau de bord personnel de salon-odette-coiffeur.js (sous forme
@@ -41,18 +47,38 @@
     sans changer de compte — calculés par computeOwnerStats(scope).
   - Onglet Clients : tous les clients du salon (prénom, téléphone, email, nb
     de RDV, dernier RDV), avec une recherche simple côté client.
+  - Onglet Horaires (2026-09-04) : EMPLOI DU TEMPS RÉCURRENT — la propriétaire
+    règle, une fois par coiffeur, quels jours de la semaine (mar-sam) il/elle
+    travaille normalement (chips cliquables, en surbrillance = travaille).
+    S'applique automatiquement à TOUTES les semaines à venir, y compris sur
+    le calendrier de réservation des CLIENTS (voir la table publique
+    `weekly_day_off` dans salon-odette-schema.sql et son intégration dans
+    salon-odette-reservation.js) — c'est ce qui fait que ça "organise" le
+    travail pour de vrai, pas juste un affichage interne. N'empêche pas de
+    poser une absence PONCTUELLE par-dessus (onglet suivant) pour une
+    exception un jour où le coiffeur travaille normalement.
   - Onglet Plannings & organisation : planning hebdomadaire de N'IMPORTE QUEL
     coiffeur choisi (ownerPlanningCoiffeur), même principe visuel que le
-    planning personnel de salon-odette-coiffeur.js, avec un bouton pour
-    attribuer/retirer la semaine AFFICHÉE à cet employé ("Marquer cette
-    semaine comme non travaillée" / "Réactiver la semaine") — pose ou enlève
-    une absence "journée" sur chaque jour ouvert (mar-sam) de la semaine, au
-    nom de n'importe quel coiffeur. Plus la liste des absences à venir de
-    toute l'équipe en dessous (avec le motif, contrairement à ce qu'un
-    coiffeur voit des autres normalement).
+    planning personnel de salon-odette-coiffeur.js (montre aussi ses jours de
+    repos habituels, distingués "Repos" des absences ponctuelles "Absent(e)"),
+    avec un bouton pour attribuer/retirer la semaine AFFICHÉE à cet employé
+    ("Marquer cette semaine comme non travaillée" / "Réactiver la semaine")
+    — pose ou enlève une absence "journée" sur chaque jour ouvert (mar-sam)
+    de la semaine, au nom de n'importe quel coiffeur ; sert aux exceptions
+    PONCTUELLES (congés d'une semaine précise), contrairement à l'onglet
+    Horaires qui règle la règle permanente. Plus la liste des absences à
+    venir de toute l'équipe en dessous (avec le motif, contrairement à ce
+    qu'un coiffeur voit des autres normalement).
+  - Onglet Vue mensuelle (2026-09-04) : tableau croisé coiffeur × jour du
+    mois affiché, un symbole par case (✓ ou un chiffre = travaille, avec le
+    nombre de RDV ce jour-là ; – = repos habituel ; ✗ = absence ponctuelle ;
+    · = salon fermé) — combine allWeeklyDaysOff, allAbsencesForOwner et
+    allBookingsForOwnerEnriched en une seule vue d'ensemble, pour vérifier
+    après coup "qui a travaillé quel jour" sur tout un mois d'un coup d'œil,
+    sans naviguer coiffeur par coiffeur ni semaine par semaine.
   Rendu possible par les règles RLS "..._select_owner" (lecture sur bookings/
-  profiles/cancellations/absences) et "absences_..._owner" (écriture sur
-  absences) dans salon-odette-schema.sql — accès accordé UNIQUEMENT si
+  profiles/cancellations/absences) et "..._owner" (écriture sur absences et
+  weekly_day_off) dans salon-odette-schema.sql — accès accordé UNIQUEMENT si
   `staff.is_owner` est vrai pour le compte connecté.
 
   CE QU'IL RESTE À FAIRE / IDÉES POUR LA SUITE
@@ -63,6 +89,9 @@
   - Exporter la liste des clients (CSV ou autre).
   - Regrouper visuellement une plage d'absence posée par un coiffeur pour
     lui-même (même limitation que dans salon-odette-coiffeur.js).
+  - L'emploi du temps récurrent (onglet Horaires) est au jour près, pas à
+    l'heure près (pas d'équivalent "Karim travaille seulement le matin") —
+    granularité volontairement limitée pour l'instant, à revoir si demandé.
 
   FONCTIONS DE CE FICHIER
   - escapeHtml/toDateKey/formatDateFr/isThisMonth/getMonday : identiques à
@@ -91,16 +120,17 @@
     tout est reconstruit depuis l'état à chaque fois.
   - computeOwnerStats(scope) : indicateurs pour 'all' (salon entier) ou un
     coiffeur précis, à partir de allBookingsForOwner/allCancellationsForOwner.
-  - renderOwnerStatsTab() / renderOwnerClientsTab() / renderOwnerPlanningTab()
-    : construisent le HTML de chaque onglet.
+  - renderOwnerStatsTab() / renderOwnerClientsTab() / renderOwnerHorairesTab()
+    / renderOwnerPlanningTab() / renderOwnerMonthlyTab() : construisent le
+    HTML de chaque onglet.
   - buildOwnerCalendarHtml(coiffeurName, weekOffset) : planning hebdomadaire
     (chaîne HTML, pas des nœuds DOM) d'un coiffeur donné.
   - renderOwnerTeamAbsencesHtml() : absences à venir de toute l'équipe.
   - wireOwnerSection(container) : câble tous les clics (onglets, sélecteurs,
-    navigation semaine, bouton attribuer/retirer une semaine, recherche
-    client) — chacun met à jour une variable d'état puis rappelle
-    renderDashboard() (ou loadOwnerData() après une écriture en base, pour
-    repartir de données fraîches).
+    navigation semaine/mois, bouton attribuer/retirer une semaine, chips
+    Horaires, recherche client) — chacun met à jour une variable d'état puis
+    rappelle renderDashboard() (ou loadOwnerData() après une écriture en
+    base, pour repartir de données fraîches).
 
   DÉPEND DE : rien d'autre que la librairie Supabase (chargée par CDN dans
   salon-odette-espace-proprietaire.html) — ce fichier est volontairement
@@ -145,10 +175,16 @@ var allCancellationsForOwner = []; // toutes les annulations, tous coiffeurs con
 var allClients = []; // tous les profils clients (public.profiles)
 
 // État des onglets/sélecteurs — remis à zéro à la déconnexion.
-var ownerActiveTab = 'stats'; // 'stats' | 'clients' | 'planning'
+var ownerActiveTab = 'stats'; // 'stats' | 'clients' | 'horaires' | 'planning' | 'monthly'
 var ownerStatsScope = 'all'; // 'all' (salon entier) ou un nom de coiffeur précis
 var ownerPlanningCoiffeur = null; // initialisé au premier rendu (son propre nom par défaut)
 var ownerPlanningWeekOffset = 0;
+var ownerMonthlyOffset = 0; // 0 = mois courant, +/-1 = mois suivant/précédent, pour l'onglet Vue mensuelle
+
+// Emploi du temps récurrent — une ligne { coiffeur, jour_semaine } = ce coiffeur ne
+// travaille PAS ce jour de la semaine (0=dim...6=sam), comme règle permanente. Pas de ligne
+// = travaille normalement ce jour-là (voir la table `weekly_day_off` dans le schéma SQL).
+var allWeeklyDaysOff = [];
 
 // Incrémenté à chaque connexion/déconnexion — ignore une réponse réseau périmée arrivant
 // après qu'une session plus récente a pris le relais (même pattern que salon-odette-coiffeur.js).
@@ -283,13 +319,15 @@ function loadOwnerData() {
     sb.from('bookings').select('*').order('appointment_at', { ascending: true }),
     sb.from('cancellations').select('*'),
     sb.from('profiles').select('*').order('prenom', { ascending: true }),
-    sb.from('absences').select('*').order('date', { ascending: true })
+    sb.from('absences').select('*').order('date', { ascending: true }),
+    sb.from('weekly_day_off').select('*')
   ]).then(function (results) {
     if (myGeneration !== sessionGeneration) return;
     var bookingsRes = results[0];
     var cancellationsRes = results[1];
     var profilesRes = results[2];
     var absencesRes = results[3];
+    var weeklyDayOffRes = results[4];
     if (bookingsRes.error) console.error(bookingsRes.error);
     allBookingsForOwner = bookingsRes.data || [];
     if (cancellationsRes.error) console.error(cancellationsRes.error);
@@ -298,6 +336,8 @@ function loadOwnerData() {
     allClients = profilesRes.data || [];
     if (absencesRes.error) console.error(absencesRes.error);
     allAbsencesForOwner = absencesRes.data || [];
+    if (weeklyDayOffRes.error) console.error(weeklyDayOffRes.error);
+    allWeeklyDaysOff = weeklyDayOffRes.data || [];
 
     // bookings.user_id référence auth.users, pas profiles directement — PostgREST ne peut
     // pas relier les deux tables automatiquement, d'où cette combinaison faite à la main.
@@ -354,7 +394,7 @@ function renderDashboard() {
   var panel = document.getElementById('dashboardPanel');
   panel.hidden = false;
 
-  var tabLabels = { stats: 'Statistiques', clients: 'Clients', planning: 'Plannings & organisation' };
+  var tabLabels = { stats: 'Statistiques', clients: 'Clients', horaires: 'Horaires', planning: 'Plannings & organisation', monthly: 'Vue mensuelle' };
   var tabsHtml = '<div class="chip-row" style="margin-top:20px;">' +
     Object.keys(tabLabels).map(function (tab) {
       return '<button type="button" class="chip-btn' + (ownerActiveTab === tab ? ' active' : '') + '" data-owner-tab="' + tab + '">' + tabLabels[tab] + '</button>';
@@ -362,7 +402,9 @@ function renderDashboard() {
   '</div>';
 
   var bodyHtml = ownerActiveTab === 'clients' ? renderOwnerClientsTab()
+    : ownerActiveTab === 'horaires' ? renderOwnerHorairesTab()
     : ownerActiveTab === 'planning' ? renderOwnerPlanningTab()
+    : ownerActiveTab === 'monthly' ? renderOwnerMonthlyTab()
     : renderOwnerStatsTab();
 
   panel.innerHTML =
@@ -381,10 +423,12 @@ function renderDashboard() {
       allAbsencesForOwner = [];
       allCancellationsForOwner = [];
       allClients = [];
+      allWeeklyDaysOff = [];
       ownerActiveTab = 'stats';
       ownerStatsScope = 'all';
       ownerPlanningCoiffeur = null;
       ownerPlanningWeekOffset = 0;
+      ownerMonthlyOffset = 0;
       renderLoginForm();
     });
   });
@@ -446,6 +490,37 @@ function renderOwnerClientsTab() {
     '<div class="client-table-wrap"><table class="client-table" id="clientTable"><thead><tr><th>Prénom</th><th>Téléphone</th><th>Email</th><th>RDV</th><th>Dernier RDV</th></tr></thead><tbody>' + clientRowsHtml + '</tbody></table></div>';
 }
 
+// Jours de la semaine où le salon peut être ouvert (mardi à samedi — dimanche/lundi
+// toujours fermés partout, voir isClosedDay ailleurs) — sert de base à l'onglet Horaires
+// et à la vue mensuelle. Convention Date.getDay() : 0=dim, 1=lun, ..., 6=sam.
+var JOURS_OUVRABLES = [2, 3, 4, 5, 6];
+
+// Onglet "Horaires" : emploi du temps RÉCURRENT — la propriétaire décide, une fois pour
+// toutes les semaines à venir, quels jours chaque coiffeur travaille normalement (ex.
+// Karim ne travaille jamais le vendredi). En surbrillance = travaille ce jour-là ; cliquer
+// bascule vers/depuis un jour de repos habituel. S'applique automatiquement à toutes les
+// semaines à venir, y compris sur le calendrier de réservation des clients (voir
+// weekly_day_off dans salon-odette-schema.sql et salon-odette-reservation.js). Pour une
+// exception PONCTUELLE (congés d'UNE semaine précise) sans changer cette règle de base,
+// voir plutôt l'onglet "Plannings & organisation".
+function renderOwnerHorairesTab() {
+  var rowsHtml = COIFFEURS.map(function (nom) {
+    var joursDeRepos = allWeeklyDaysOff.filter(function (r) { return r.coiffeur === nom; }).map(function (r) { return r.jour_semaine; });
+    var chipsHtml = JOURS_OUVRABLES.map(function (dow) {
+      var travaille = joursDeRepos.indexOf(dow) === -1;
+      var dayLabel = JOURS[dow].charAt(0).toUpperCase() + JOURS[dow].slice(1);
+      return '<button type="button" class="chip-btn' + (travaille ? ' active' : '') + '" data-horaire-coiffeur="' + escapeHtml(nom) + '" data-horaire-jour="' + dow + '">' + dayLabel + '</button>';
+    }).join('');
+    return '<div style="margin-top:20px;">' +
+      '<div style="font-weight:600; font-size:0.95rem; margin-bottom:8px;">' + escapeHtml(nom) + '</div>' +
+      '<div class="chip-row">' + chipsHtml + '</div>' +
+    '</div>';
+  }).join('');
+
+  return '<p class="account-sub">Cliquez un jour pour dire si ce coiffeur travaille normalement (en surbrillance) ou non — s\'applique automatiquement à toutes les semaines à venir, y compris sur le calendrier de réservation des clients. Pour une exception ponctuelle (congés, maladie...) sans changer cette règle, utilisez plutôt l\'onglet "Plannings & organisation".</p>' +
+    rowsHtml;
+}
+
 // Onglet "Plannings & organisation" : planning hebdomadaire de N'IMPORTE QUEL coiffeur
 // choisi (ownerPlanningCoiffeur), avec un bouton pour attribuer/retirer la semaine
 // AFFICHÉE à cet employé — plus les absences à venir de toute l'équipe en dessous.
@@ -496,7 +571,9 @@ function renderOwnerPlanningTab() {
 }
 
 // Construit le HTML (une chaîne, pas des nœuds DOM) du planning hebdomadaire d'un
-// coiffeur donné, à partir de allBookingsForOwnerEnriched et allAbsencesForOwner.
+// coiffeur donné, à partir de allBookingsForOwnerEnriched, allAbsencesForOwner et
+// allWeeklyDaysOff (emploi du temps récurrent, onglet Horaires — distingué visuellement
+// d'une absence ponctuelle : "Repos" contre "Absent(e)").
 function buildOwnerCalendarHtml(coiffeurName, weekOffset) {
   var bookingsByLabel = {};
   allBookingsForOwnerEnriched.filter(function (b) { return b.coiffeur === coiffeurName; }).forEach(function (b) { bookingsByLabel[b.label] = b; });
@@ -515,6 +592,8 @@ function buildOwnerCalendarHtml(coiffeurName, weekOffset) {
     }
   });
 
+  var joursDeRepos = allWeeklyDaysOff.filter(function (r) { return r.coiffeur === coiffeurName; }).map(function (r) { return r.jour_semaine; });
+
   var monday = getMonday(new Date());
   var weekStart = new Date(monday.getTime());
   weekStart.setDate(weekStart.getDate() + weekOffset * 7);
@@ -526,12 +605,13 @@ function buildOwnerCalendarHtml(coiffeurName, weekOffset) {
     var dow = d.getDay();
     var isClosedDay = dow === 0 || dow === 1;
     var isAbsentDay = !!absenceDates[toDateKey(d)];
+    var isRegularDayOff = !isClosedDay && joursDeRepos.indexOf(dow) !== -1;
 
-    daysHtml += '<div class="cal-day' + ((isClosedDay || isAbsentDay) ? ' closed' : '') + '">' +
+    daysHtml += '<div class="cal-day' + ((isClosedDay || isAbsentDay || isRegularDayOff) ? ' closed' : '') + '">' +
       '<div class="cal-day-head">' + JOURS[dow] + '<strong>' + d.getDate() + ' ' + MOIS[d.getMonth()] + '</strong></div>';
 
-    if (isClosedDay || isAbsentDay) {
-      daysHtml += '<div class="cal-day-closed-label">' + (isClosedDay ? 'Fermé' : 'Absent(e)') + '</div></div>';
+    if (isClosedDay || isAbsentDay || isRegularDayOff) {
+      daysHtml += '<div class="cal-day-closed-label">' + (isClosedDay ? 'Fermé' : (isAbsentDay ? 'Absent(e)' : 'Repos')) + '</div></div>';
       continue;
     }
 
@@ -569,6 +649,66 @@ function renderOwnerTeamAbsencesHtml() {
   }).join('') + '</div>';
 }
 
+// Onglet "Vue mensuelle" : qui a travaillé (ou pas) quel jour, pour tout le mois affiché et
+// toute l'équipe à la fois — combine emploi du temps récurrent (allWeeklyDaysOff), absences
+// ponctuelles (allAbsencesForOwner) et nombre de RDV du jour (allBookingsForOwnerEnriched,
+// no_show exclu puisqu'un no-show n'a généré aucun vrai service ce jour-là).
+function renderOwnerMonthlyTab() {
+  var now = new Date();
+  var monthDate = new Date(now.getFullYear(), now.getMonth() + ownerMonthlyOffset, 1);
+  var year = monthDate.getFullYear();
+  var month = monthDate.getMonth();
+  var daysInMonth = new Date(year, month + 1, 0).getDate();
+  var monthLabel = MOIS[month] + ' ' + year;
+
+  var bookingCountByCoiffeurDate = {};
+  allBookingsForOwnerEnriched.forEach(function (b) {
+    if (!b.appointment_at || b.status === 'no_show') return;
+    var key = b.coiffeur + '|' + toDateKey(new Date(b.appointment_at));
+    bookingCountByCoiffeurDate[key] = (bookingCountByCoiffeurDate[key] || 0) + 1;
+  });
+
+  var absentJourneeByCoiffeurDate = {};
+  allAbsencesForOwner.forEach(function (a) {
+    if (a.heure === 'journee') absentJourneeByCoiffeurDate[a.coiffeur + '|' + a.date] = true;
+  });
+
+  var headerCellsHtml = '';
+  for (var day = 1; day <= daysInMonth; day++) headerCellsHtml += '<th>' + day + '</th>';
+
+  var rowsHtml = COIFFEURS.map(function (nom) {
+    var joursDeRepos = allWeeklyDaysOff.filter(function (r) { return r.coiffeur === nom; }).map(function (r) { return r.jour_semaine; });
+    var cellsHtml = '';
+    for (var d = 1; d <= daysInMonth; d++) {
+      var date = new Date(year, month, d);
+      var dow = date.getDay();
+      var dateKey = toDateKey(date);
+      var cellClass, cellLabel, title;
+      if (dow === 0 || dow === 1) {
+        cellClass = 'month-cell-closed'; cellLabel = '·'; title = 'Fermé';
+      } else if (absentJourneeByCoiffeurDate[nom + '|' + dateKey]) {
+        cellClass = 'month-cell-absent'; cellLabel = '✗'; title = 'Absent(e) (exception ponctuelle)';
+      } else if (joursDeRepos.indexOf(dow) !== -1) {
+        cellClass = 'month-cell-off'; cellLabel = '–'; title = 'Repos (horaire habituel)';
+      } else {
+        var count = bookingCountByCoiffeurDate[nom + '|' + dateKey] || 0;
+        cellClass = 'month-cell-work'; cellLabel = count > 0 ? String(count) : '✓';
+        title = 'Travaille' + (count > 0 ? ' — ' + count + ' rendez-vous' : '');
+      }
+      cellsHtml += '<td class="' + cellClass + '" title="' + escapeHtml(title) + '">' + cellLabel + '</td>';
+    }
+    return '<tr><th>' + escapeHtml(nom) + '</th>' + cellsHtml + '</tr>';
+  }).join('');
+
+  return '<div class="calendar-nav">' +
+      '<button type="button" class="btn btn-ghost" data-owner-month-nav="-1">← Mois précédent</button>' +
+      '<span class="mono">' + escapeHtml(monthLabel) + '</span>' +
+      '<button type="button" class="btn btn-ghost" data-owner-month-nav="1">Mois suivant →</button>' +
+    '</div>' +
+    '<p class="account-sub" style="margin-top:16px;">✓ ou un chiffre = travaille (nombre de rendez-vous ce jour-là) · – = repos habituel · ✗ = absence ponctuelle · · = salon fermé.</p>' +
+    '<div class="month-table-wrap"><table class="month-table"><thead><tr><th></th>' + headerCellsHtml + '</tr></thead><tbody>' + rowsHtml + '</tbody></table></div>';
+}
+
 // Câble tous les clics de la page (onglets, sélecteurs, navigation semaine, bouton
 // attribuer/retirer une semaine, recherche client) — chacun met à jour une variable
 // d'état puis rappelle renderDashboard(), ou loadOwnerData() après une écriture en base.
@@ -583,6 +723,31 @@ function wireOwnerSection(container) {
   container.querySelectorAll('[data-owner-scope]').forEach(function (btn) {
     btn.addEventListener('click', function () {
       ownerStatsScope = btn.getAttribute('data-owner-scope');
+      renderDashboard();
+    });
+  });
+
+  // Onglet Horaires : bascule le jour cliqué entre "travaille" (pas de ligne dans
+  // weekly_day_off — le cas par défaut) et "repos habituel" (une ligne). Voir la remarque
+  // sur ce choix de modèle dans salon-odette-schema.sql : on ne stocke que l'exception.
+  container.querySelectorAll('[data-horaire-coiffeur]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var nom = btn.getAttribute('data-horaire-coiffeur');
+      var jour = parseInt(btn.getAttribute('data-horaire-jour'), 10);
+      var estActuellementEnRepos = allWeeklyDaysOff.some(function (r) { return r.coiffeur === nom && r.jour_semaine === jour; });
+      var request = estActuellementEnRepos
+        ? sb.from('weekly_day_off').delete().eq('coiffeur', nom).eq('jour_semaine', jour)
+        : sb.from('weekly_day_off').insert({ coiffeur: nom, jour_semaine: jour });
+      request.then(function (res) {
+        if (res.error) { window.alert('Erreur : ' + res.error.message); return; }
+        loadOwnerData();
+      });
+    });
+  });
+
+  container.querySelectorAll('[data-owner-month-nav]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      ownerMonthlyOffset += parseInt(btn.getAttribute('data-owner-month-nav'), 10);
       renderDashboard();
     });
   });

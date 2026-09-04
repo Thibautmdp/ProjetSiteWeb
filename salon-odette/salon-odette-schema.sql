@@ -324,3 +324,42 @@ create policy "absences_update_owner" on public.absences
 drop policy if exists "absences_delete_owner" on public.absences;
 create policy "absences_delete_owner" on public.absences
   for delete using (exists (select 1 from public.staff where staff.id = auth.uid() and staff.is_owner));
+
+-- ============================================================================
+-- Emploi du temps récurrent (onglet "Horaires" de l'espace propriétaire)
+-- ============================================================================
+-- Une ligne = ce coiffeur ne travaille PAS ce jour de la semaine, comme règle
+-- permanente (jour_semaine suit la même convention que Date.getDay() en JS :
+-- 0 = dimanche, 1 = lundi, ..., 6 = samedi ; dimanche/lundi sont de toute
+-- façon fermés partout, seuls 2 à 6 — mardi à samedi — ont un sens ici).
+-- PAS de ligne = travaille normalement ce jour-là (même logique que les
+-- autres tables du site : on ne stocke que les exceptions au cas par défaut,
+-- voir `absences`/`cancellations`). Différent de `absences` qui reste pour
+-- les exceptions PONCTUELLES (congés d'UNE semaine précise, maladie...) —
+-- les deux mécanismes se cumulent : le calendrier client ferme un jour chez
+-- un coiffeur soit parce que c'est son jour de repos habituel (ici), soit à
+-- cause d'une absence ponctuelle ce jour précis (`absences`), sans lui
+-- révéler laquelle des deux raisons s'applique.
+create table if not exists public.weekly_day_off (
+  id uuid primary key default gen_random_uuid(),
+  coiffeur text not null check (coiffeur in ('Odette', 'Karim', 'Lina')),
+  jour_semaine int not null check (jour_semaine between 0 and 6),
+  created_at timestamptz not null default now(),
+  unique (coiffeur, jour_semaine)
+);
+
+alter table public.weekly_day_off enable row level security;
+
+-- Info publique (savoir quels jours un coiffeur travaille normalement est nécessaire au
+-- calendrier client, comme booked_slots/absence_days) — tout le monde peut lire.
+drop policy if exists "weekly_day_off_select_public" on public.weekly_day_off;
+create policy "weekly_day_off_select_public" on public.weekly_day_off
+  for select using (true);
+
+-- Seul un propriétaire peut créer/supprimer un jour de repos récurrent (pas de colonne à
+-- modifier : soit la ligne existe, soit elle n'existe pas — "for all" couvre insert et
+-- delete d'un coup, en plus du select déjà ouvert au public ci-dessus).
+drop policy if exists "weekly_day_off_write_owner" on public.weekly_day_off;
+create policy "weekly_day_off_write_owner" on public.weekly_day_off
+  for all using (exists (select 1 from public.staff where staff.id = auth.uid() and staff.is_owner))
+  with check (exists (select 1 from public.staff where staff.id = auth.uid() and staff.is_owner));
