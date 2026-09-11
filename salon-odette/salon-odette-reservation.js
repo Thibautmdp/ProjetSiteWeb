@@ -291,6 +291,12 @@ function renderCalendarGrid(takenLabels) {
 }
 renderCoiffeurSelector();
 buildCalendar();
+// Rendu initial garanti de l'espace client : sb.auth.onAuthStateChange (voir
+// salon-odette-connexion.js) peut se déclencher trop tôt et abandonner sans rien
+// afficher (voir le commentaire là-bas) — cet appel, ici, n'a lieu qu'une fois les
+// 3 fichiers chargés, donc toujours capable d'afficher au moins le formulaire de
+// connexion/inscription dès l'arrivée sur la page.
+renderAllAccountPanels();
 
 var prevWeekBtn = document.getElementById('prevWeekBtn');
 var nextWeekBtn = document.getElementById('nextWeekBtn');

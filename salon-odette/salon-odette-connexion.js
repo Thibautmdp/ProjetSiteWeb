@@ -205,6 +205,13 @@ function renderAccountInto(panel, prefix) {
 
 sb.auth.onAuthStateChange(function (_event, session) {
   currentSession = session;
+  // Ce callback peut se déclencher (session initiale) avant même que le <script>
+  // salon-odette-client.js suivant n'ait fini de charger — editingProfile et
+  // refreshAndRenderAll() n'existeraient alors pas encore. Dans ce cas on se
+  // contente de mémoriser currentSession : l'appel explicite à la fin de
+  // salon-odette-reservation.js (une fois les 3 fichiers chargés) fera le
+  // premier rendu avec la bonne valeur.
+  if (typeof refreshAndRenderAll !== 'function') return;
   if (!session) { editingProfile.m = false; editingProfile.s = false; }
   refreshAndRenderAll();
 });

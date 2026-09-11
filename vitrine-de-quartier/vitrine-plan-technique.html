@@ -4,6 +4,8 @@
   (plan technique / bleu d'architecte). Reste à compléter avant diffusion large :
   - Numéro SIRET (mentions légales) — actuellement "à compléter"
 -->
+<!DOCTYPE html>
+<meta charset="UTF-8">
 <title>Plan de Vitrine</title>
 <style>
   :root {
@@ -733,15 +735,17 @@
     }
   });
 
-  downloadBtn.addEventListener('click', async function () {
-    try {
-      var downloads = await claude.use('downloads');
-      if (!downloads) { showStatus('Le téléchargement n\'est pas disponible ici. Utilisez plutôt "Copier le message".'); return; }
-      await downloads.save({ filename: 'demande-de-devis.txt', data: buildMessage() });
-      showStatus('Récapitulatif téléchargé.');
-    } catch (e) {
-      showStatus('Téléchargement annulé ou indisponible. Utilisez "Copier le message" en secours.');
-    }
+  downloadBtn.addEventListener('click', function () {
+    var blob = new Blob([buildMessage()], { type: 'text/plain;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'demande-de-devis.txt';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    showStatus('Récapitulatif téléchargé.');
   });
 
   var prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
