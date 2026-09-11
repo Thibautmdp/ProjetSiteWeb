@@ -1,0 +1,302 @@
+<!--
+  Salon Odette — nouvelle page de réservation en 3 étapes, dossier site-odette2/
+  (autonome, séparé de salon-odette/). Atteinte depuis site-odette2.html
+  (bouton "Prendre rendez-vous"). L'original — salon-odette/salon-odette-
+  demo.html + salon-odette-reservation.js, calendrier affiché en pleine page —
+  reste inchangé dans son propre dossier.
+
+  3 étapes : 1) quel coiffeur d'habitude, 2) quel type de coupe, 3) le
+  calendrier de CE coiffeur avec ses disponibilités, puis connexion/compte
+  pour confirmer. Voir site-odette2-reserver.js pour le détail et pourquoi si
+  peu de code est dupliqué (réutilise tel quel site-odette2-connexion.js et
+  site-odette2-client.js — même panneau de compte, id="accountPanel").
+
+  Gère aussi ?reschedule=<id> dans l'URL (venant du bouton "Reprogrammer" de
+  l'espace client sur site-odette2.html) : pré-remplit le coiffeur et la
+  prestation du rendez-vous d'origine, et modifie ce rendez-vous au lieu d'en
+  créer un nouveau à la confirmation.
+-->
+<!DOCTYPE html>
+<meta charset="UTF-8">
+<title>Réserver — Salon Odette</title>
+<style>
+  :root {
+    --ivoire: #F2EAE1;
+    --ivoire-surface: #E9DFD3;
+    --encre: #1B1512;
+    --encre-soft: #5B5049;
+    --bordeaux: #6C2437;
+    --bordeaux-contrast: #F2EAE1;
+    --laiton: #A9814D;
+    --laiton-contrast: #1B1512;
+    --border: rgba(27,21,18,0.14);
+    --shadow: 0 1px 2px rgba(27,21,18,0.06), 0 10px 28px rgba(27,21,18,0.08);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ivoire: #17120F;
+      --ivoire-surface: #211A16;
+      --encre: #F2EAE1;
+      --encre-soft: #B9AEA5;
+      --bordeaux: #C06A80;
+      --bordeaux-contrast: #1B1512;
+      --laiton: #D8B37E;
+      --laiton-contrast: #1B1512;
+      --border: rgba(242,234,225,0.14);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ivoire: #17120F;
+    --ivoire-surface: #211A16;
+    --encre: #F2EAE1;
+    --encre-soft: #B9AEA5;
+    --bordeaux: #C06A80;
+    --bordeaux-contrast: #1B1512;
+    --laiton: #D8B37E;
+    --laiton-contrast: #1B1512;
+    --border: rgba(242,234,225,0.14);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--ivoire);
+    color: var(--encre);
+    font-family: 'Karla', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3 {
+    font-family: 'Bodoni Moda', Georgia, 'Times New Roman', serif;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+    margin: 0;
+    color: var(--encre);
+  }
+  .mono { font-family: 'Space Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  a { color: inherit; }
+  p { margin: 0; }
+  ul { margin: 0; padding: 0; list-style: none; }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--laiton); outline-offset: 3px; }
+
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 24px; }
+  .eyebrow {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--laiton);
+    display: block;
+    margin-bottom: 16px;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 13px 26px;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.92rem;
+    text-decoration: none;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: transform 0.15s ease, background 0.15s ease;
+  }
+  .btn:hover { transform: translateY(-1px); }
+  .btn-primary { background: var(--bordeaux); color: var(--bordeaux-contrast); }
+  .btn-primary:hover { background: color-mix(in srgb, var(--bordeaux) 85%, black); }
+  .btn-primary[disabled] { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+  .btn-ghost { background: transparent; color: var(--encre); border-color: var(--border); }
+  .btn-ghost:hover { background: var(--ivoire-surface); }
+
+  header.site {
+    position: sticky; top: 0; z-index: 20;
+    background: color-mix(in srgb, var(--ivoire) 88%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+  }
+  .header-inner { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 24px; }
+  .brand { font-family: 'Bodoni Moda', serif; font-size: 1.3rem; font-style: italic; text-decoration: none; }
+
+  footer.site { background: var(--encre); color: color-mix(in srgb, var(--ivoire) 85%, transparent); padding: 32px 0; }
+  .footer-bottom { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; font-size: 0.78rem; }
+  .footer-bottom a { text-decoration: underline; }
+
+  main.reserve-main { max-width: 720px; margin: 0 auto; padding: 56px 24px 90px; }
+
+  /* ---------- indicateur d'étapes ---------- */
+  .step-indicator { display: flex; gap: 10px; margin-top: 36px; margin-bottom: 44px; }
+  .step-dot {
+    flex: 1; display: flex; flex-direction: column; gap: 8px;
+    font-family: 'Space Mono', monospace; font-size: 0.78rem; color: var(--encre-soft);
+  }
+  .step-dot .bar { height: 4px; border-radius: 2px; background: var(--border); }
+  .step-dot.active .bar, .step-dot.done .bar { background: var(--bordeaux); }
+  .step-dot.active { color: var(--encre); font-weight: 700; }
+
+  /* ---------- étapes ---------- */
+  .wizard-step h2 { font-size: 1.4rem; margin-bottom: 22px; }
+  .option-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  @media (max-width: 640px) { .option-cards { grid-template-columns: 1fr; } }
+  .option-card {
+    text-align: left;
+    background: var(--ivoire-surface); border: 1px solid var(--border); border-radius: 4px;
+    padding: 22px 18px; cursor: pointer; box-shadow: var(--shadow);
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+  .option-card:hover { border-color: var(--laiton); }
+  .option-card.selected { border-color: var(--bordeaux); background: color-mix(in srgb, var(--bordeaux) 10%, var(--ivoire-surface)); }
+  .option-card .avatar {
+    width: 44px; height: 44px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Bodoni Moda', serif; font-style: italic; font-size: 1.2rem;
+    margin-bottom: 14px; color: var(--laiton-contrast);
+  }
+  .option-card h3 { font-size: 1.02rem; }
+  .option-card p { font-size: 0.84rem; color: var(--encre-soft); margin-top: 4px; }
+
+  .form-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; align-items: center; }
+
+  /* ---------- calendrier (étape 3, repris de la version originale) ---------- */
+  .calendar-nav { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 8px; flex-wrap: wrap; }
+  .calendar-nav .week-label { font-family: 'Space Mono', monospace; font-size: 0.85rem; letter-spacing: 0.03em; }
+  .calendar-nav .btn { padding: 9px 18px; font-size: 0.84rem; }
+  .calendar-wrap { margin-top: 18px; overflow-x: auto; padding-bottom: 10px; }
+  .calendar { display: grid; grid-auto-flow: column; grid-auto-columns: 148px; gap: 14px; width: max-content; }
+  .cal-day { background: var(--ivoire); border: 1px solid var(--border); border-radius: 4px; padding: 16px; box-shadow: var(--shadow); }
+  .cal-day-head { font-family: 'Space Mono', monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--encre-soft); margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border); text-align: center; line-height: 1.5; }
+  .cal-day-head strong { display: block; font-size: 0.9rem; color: var(--encre); font-family: 'Karla', sans-serif; text-transform: none; letter-spacing: 0; }
+  .cal-slots { display: flex; flex-direction: column; gap: 8px; }
+  .cal-slot {
+    border: 1px solid var(--border); border-radius: 3px; padding: 8px; font-size: 0.86rem; text-align: center;
+    background: transparent; color: var(--encre); cursor: pointer;
+    font-family: 'Space Mono', monospace;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  }
+  .cal-slot:hover:not(.booked) { border-color: var(--bordeaux); }
+  .cal-slot.selected { background: var(--bordeaux); color: var(--bordeaux-contrast); border-color: var(--bordeaux); }
+  .cal-slot.booked { color: var(--encre-soft); text-decoration: line-through; cursor: not-allowed; opacity: 0.5; }
+  .cal-day.closed { opacity: 0.45; }
+  .cal-day-closed-label { text-align: center; font-family: 'Space Mono', monospace; font-size: 0.8rem; color: var(--encre-soft); padding: 18px 0; }
+  .calendar-legend { display: flex; gap: 22px; margin-top: 16px; font-size: 0.82rem; color: var(--encre-soft); align-items: center; flex-wrap: wrap; }
+  .calendar-legend .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 7px; vertical-align: middle; }
+  .calendar-caption { margin-top: 10px; font-size: 0.8rem; color: var(--encre-soft); }
+
+  /* ---------- confirmation (compte) ---------- */
+  .confirm-panel {
+    margin-top: 36px; background: var(--ivoire-surface); border: 1px solid var(--border);
+    border-radius: 4px; padding: 28px;
+  }
+  .confirm-panel .slot-label { margin-top: -6px; margin-bottom: 18px; color: var(--bordeaux); font-weight: 700; }
+  .account-panel { margin-top: 0; }
+  .account-panel h3 { font-size: 1.05rem; margin-bottom: 4px; }
+  .account-panel .account-sub { font-size: 0.85rem; color: var(--encre-soft); margin-bottom: 18px; }
+  .account-panel .profile-row { display: flex; justify-content: space-between; align-items: baseline; font-size: 0.94rem; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .account-panel .profile-row .label { color: var(--encre-soft); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; font-family: 'Space Mono', monospace; }
+  .booking-list { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+  .booking-list-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 0.92rem; padding: 12px 14px; background: var(--ivoire); border-radius: 3px; border: 1px solid var(--border); }
+  .booking-list-item .presta { color: var(--encre-soft); font-size: 0.85rem; }
+  .booking-actions { display: flex; gap: 14px; flex-shrink: 0; }
+  .booking-action-btn { background: none; border: none; padding: 0; font: inherit; font-size: 0.82rem; color: var(--encre-soft); text-decoration: underline; cursor: pointer; }
+  .booking-action-btn:hover { color: var(--bordeaux); }
+  .account-empty { font-size: 0.9rem; color: var(--encre-soft); margin-top: 14px; }
+  .account-forget { margin-top: 20px; background: none; border: none; padding: 0; font-size: 0.82rem; color: var(--encre-soft); text-decoration: underline; cursor: pointer; }
+  .account-caption { margin-top: 18px; font-size: 0.78rem; color: var(--encre-soft); border-top: 1px solid var(--border); padding-top: 16px; }
+  .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; }
+  .field label { font-size: 0.84rem; font-weight: 600; }
+  .field input, .field select, .field textarea {
+    font: inherit; font-size: 0.95rem; padding: 11px 12px; border-radius: 3px;
+    border: 1px solid var(--border); background: var(--ivoire); color: var(--encre);
+  }
+  .field input:focus, .field select:focus, .field textarea:focus { outline: 2px solid var(--laiton); outline-offset: 1px; }
+  .login-alert {
+    margin-top: 14px; padding: 12px 14px; border-radius: 3px;
+    background: color-mix(in srgb, var(--bordeaux) 12%, var(--ivoire-surface));
+    border-left: 3px solid var(--bordeaux);
+    color: var(--encre); font-size: 0.88rem;
+  }
+</style>
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@0,500;0,600;1,500&family=Karla:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
+
+<header class="site">
+  <div class="header-inner">
+    <a class="brand" href="site-odette2.html">Salon Odette</a>
+    <a class="btn btn-ghost" href="site-odette2.html">← Retour à l'accueil</a>
+  </div>
+</header>
+
+<main class="reserve-main">
+  <span class="eyebrow">Réservation</span>
+  <h1 style="font-size:2.1rem; font-style:italic;">Réservez votre créneau</h1>
+  <p id="rescheduleBanner" class="login-alert" hidden></p>
+
+  <div class="step-indicator" id="stepIndicator">
+    <div class="step-dot" data-step="1"><span>1 · Coiffeur</span><span class="bar"></span></div>
+    <div class="step-dot" data-step="2"><span>2 · Type de coupe</span><span class="bar"></span></div>
+    <div class="step-dot" data-step="3"><span>3 · Créneau</span><span class="bar"></span></div>
+  </div>
+
+  <section class="wizard-step" id="step1">
+    <h2>Qui vous coiffe d'habitude&nbsp;?</h2>
+    <div class="option-cards" id="coiffeurCards"></div>
+  </section>
+
+  <section class="wizard-step" id="step2" hidden>
+    <h2>Quel type de coupe souhaitez-vous&nbsp;?</h2>
+    <div class="option-cards" id="prestationCards"></div>
+    <div class="form-actions">
+      <button type="button" class="btn btn-ghost" id="step2BackBtn">← Retour</button>
+    </div>
+  </section>
+
+  <section class="wizard-step" id="step3" hidden>
+    <h2>Choisissez votre créneau avec <span id="step3CoiffeurName"></span></h2>
+    <div class="calendar-nav">
+      <button type="button" id="prevWeekBtn" class="btn btn-ghost">← Semaine précédente</button>
+      <span class="week-label mono" id="weekLabel"></span>
+      <button type="button" id="nextWeekBtn" class="btn btn-ghost">Semaine suivante →</button>
+    </div>
+    <div class="calendar-wrap">
+      <div class="calendar" id="calendar"></div>
+    </div>
+    <div class="calendar-legend">
+      <span><span class="dot" style="background:var(--bordeaux);"></span>Sélectionné</span>
+      <span><span class="dot" style="border:1px solid var(--border); background:transparent;"></span>Disponible</span>
+      <span><span class="dot" style="background:color-mix(in srgb, var(--encre) 25%, transparent);"></span>Complet</span>
+    </div>
+    <p class="calendar-caption">Les jours fermés (lundi, dimanche) et les jours passés sont grisés, et les créneaux déjà réservés apparaissent barrés — en temps réel.</p>
+    <div class="form-actions">
+      <button type="button" class="btn btn-ghost" id="step3BackBtn">← Retour</button>
+    </div>
+
+    <div id="confirmPanel" class="confirm-panel" hidden>
+      <h3 style="font-size:1.15rem; margin-bottom:12px;">Confirmer votre rendez-vous</h3>
+      <p class="slot-label mono" id="confirmSlotLabel"></p>
+      <div id="accountPanel" class="account-panel"></div>
+      <p id="accountCaption" class="account-caption">Compte client sécurisé (email + mot de passe), synchronisé sur tous vos appareils.</p>
+    </div>
+  </section>
+</main>
+
+<footer class="site">
+  <div class="wrap footer-bottom">
+    <span id="footerYear"></span>
+    <a href="site-odette2.html">← Retour à l'accueil</a>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4/dist/umd/supabase.js"></script>
+<script src="site-odette2-connexion.js"></script>
+<script src="site-odette2-client.js"></script>
+<script src="site-odette2-reserver.js"></script>
