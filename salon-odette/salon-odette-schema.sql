@@ -49,6 +49,16 @@ alter table public.bookings add column if not exists coiffeur text;
 alter table public.bookings drop constraint if exists bookings_coiffeur_check;
 alter table public.bookings add constraint bookings_coiffeur_check check (coiffeur in ('Odette', 'Karim', 'Lina'));
 
+-- Sans cette contrainte, rien n'empêchait un appel direct à l'API Supabase (la clé
+-- publique est visible dans le JS de tous les sites) d'écrire n'importe quel texte dans
+-- `prestation`, en contournant le <select>/les cartes de l'UI — y compris un texte assez
+-- long ou malveillant pour être gênant une fois affiché ailleurs. Liste alignée sur les
+-- options de salon-odette-demo.html et site-odette2-reserver.js.
+alter table public.bookings drop constraint if exists bookings_prestation_check;
+alter table public.bookings add constraint bookings_prestation_check check (
+  prestation in ('Coupe femme', 'Coupe homme', 'Couleur', 'Balayage / mèches', 'Coiffage événement', 'Autre')
+);
+
 alter table public.bookings enable row level security;
 
 drop policy if exists "bookings_select_own" on public.bookings;
@@ -140,14 +150,24 @@ create policy "bookings_select_own" on public.bookings
     or exists (select 1 from public.staff where staff.id = auth.uid() and staff.nom = bookings.coiffeur)
   );
 
--- Un coiffeur voit le prénom/téléphone d'un client SEULEMENT si ce client a un
--- rendez-vous avec lui — pas celui de n'importe quel client du salon.
+-- Un coiffeur doit voir le prénom/téléphone d'un client SEULEMENT si ce client a un
+-- rendez-vous avec lui — pas celui de n'importe quel client du salon, et pas plus que
+-- prénom/téléphone (pas son email de contact ni son uuid auth).
+--
+-- Une policy RLS sur `profiles` ne peut filtrer que des LIGNES, pas des colonnes : une
+-- policy "profiles_select_staff" (SELECT ... using (exists (... where b.coiffeur = s.nom)))
+-- aurait autorisé un coiffeur à lire TOUTE la ligne profiles d'un client (email inclus)
+-- dès qu'il a un rendez-vous avec lui — salon-odette-coiffeur.js ne demande que
+-- prenom/telephone, mais un appel direct à l'API avec select('*') aurait pu tout
+-- récupérer. On expose donc explicitement une vue restreinte aux seules colonnes
+-- voulues, et on n'accorde AUCUN accès direct à `profiles` pour les coiffeurs.
 drop policy if exists "profiles_select_staff" on public.profiles;
-create policy "profiles_select_staff" on public.profiles
-  for select using (
-    exists (
-      select 1 from public.bookings b
-      join public.staff s on s.id = auth.uid()
-      where b.user_id = profiles.id and b.coiffeur = s.nom
-    )
-  );
+
+create or replace view public.staff_client_contacts as
+  select distinct p.id, p.prenom, p.telephone
+  from public.profiles p
+  join public.bookings b on b.user_id = p.id
+  join public.staff s on s.nom = b.coiffeur
+  where s.id = auth.uid();
+
+grant select on public.staff_client_contacts to authenticated;

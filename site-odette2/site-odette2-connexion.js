@@ -27,6 +27,11 @@
     invalides) plutôt que le message brut de Supabase.
   - Écran de secours "Complétez votre profil" quand la ligne profils manque.
 
+  CE QUI A ÉTÉ FAIT (2026-09-18)
+  - Correction faille : même correctif que salon-odette-connexion.js — le
+    message "email déjà enregistré" à l'inscription est remplacé par le même
+    message que "compte créé", pour éviter l'énumération d'emails.
+
   CE QU'IL RESTE À FAIRE
   - Modifier l'email de connexion lui-même (aujourd'hui non modifiable — seul
     un email de CONTACT dans le profil peut être changé, voir salon-odette-client.js
@@ -116,7 +121,15 @@ function renderAccountInto(panel, prefix) {
         options: { data: { prenom: prenom, telephone: tel } }
       }).then(function (res) {
         if (res.error) {
-          loginStatus.textContent = res.error.message;
+          var signUpMsg = res.error.message || '';
+          if (signUpMsg.toLowerCase().indexOf('already registered') !== -1) {
+            // Message volontairement IDENTIQUE à celui du cas "compte créé" ci-dessous :
+            // annoncer clairement qu'un email a déjà un compte permettrait à n'importe qui
+            // de tester des adresses une par une pour savoir qui est client du salon.
+            loginStatus.textContent = 'Compte créé — vérifiez votre email pour confirmer votre inscription, puis connectez-vous.';
+          } else {
+            loginStatus.textContent = signUpMsg;
+          }
           loginStatus.hidden = false;
           return;
         }

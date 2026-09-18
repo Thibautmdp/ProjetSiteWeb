@@ -39,6 +39,16 @@
   - Sélecteur de coiffeur (3 boutons) au-dessus du calendrier — change le
     coiffeur actif redessine le calendrier avec SES créneaux à lui/elle.
 
+  CE QUI A ÉTÉ FAIT (2026-09-18)
+  - Correction bug : un créneau du jour même dont l'heure était déjà passée
+    restait cliquable (isPastDay ne grisait que le jour entier, pas l'heure) —
+    on peut désormais réserver "aujourd'hui 9h00" seulement si 9h00 n'est pas
+    encore passé.
+  - Correction faille : renderRescheduleBanner() injectait booking.label et
+    booking.coiffeur dans innerHTML sans échappement (auto-XSS, même famille
+    que le correctif de salon-odette-client.js) — passent maintenant par
+    escapeAttr().
+
   CE QU'IL RESTE À FAIRE (voir aussi la liste complète du projet)
   - La liste des 3 coiffeurs est encore codée en dur ici (COIFFEURS) — pas de
     vraie table `coiffeurs` en base, puisqu'il n'y a pas encore d'espace
@@ -148,8 +158,8 @@ function renderRescheduleBanner() {
     return;
   }
   banner.hidden = false;
-  banner.innerHTML = 'Vous reprogrammez votre rendez-vous <strong>' + reschedulingBooking.label + '</strong>' +
-    (reschedulingBooking.coiffeur ? ' avec <strong>' + reschedulingBooking.coiffeur + '</strong>' : '') +
+  banner.innerHTML = 'Vous reprogrammez votre rendez-vous <strong>' + escapeAttr(reschedulingBooking.label) + '</strong>' +
+    (reschedulingBooking.coiffeur ? ' avec <strong>' + escapeAttr(reschedulingBooking.coiffeur) + '</strong>' : '') +
     ' — choisissez un nouveau créneau ci-dessous (vous pouvez aussi changer de coiffeur), ou ' +
     '<button type="button" id="cancelRescheduleBtn" class="booking-action-btn" style="color:inherit;">annulez la reprogrammation</button>.';
   var cancelBtn = document.getElementById('cancelRescheduleBtn');
@@ -268,11 +278,15 @@ function renderCalendarGrid(takenLabels) {
       var slotDate = new Date(d.getTime());
       slotDate.setHours(parseInt(heure, 10), 0, 0, 0);
       var appointmentAtIso = slotDate.toISOString();
+      // isPastDay ne grise que les jours entièrement passés — un créneau du jour même
+      // dont l'heure est déjà passée doit aussi être bloqué ici, sinon on peut réserver
+      // "aujourd'hui 9h00" à 16h.
+      var isPastSlot = slotDate.getTime() < Date.now();
 
-      if (takenLabels[label]) {
+      if (takenLabels[label] || isPastSlot) {
         btn.classList.add('booked');
         btn.disabled = true;
-        btn.setAttribute('aria-label', label + ' — complet');
+        btn.setAttribute('aria-label', label + (takenLabels[label] ? ' — complet' : ' — passé'));
       } else {
         btn.setAttribute('aria-label', label + ' — disponible');
         btn.addEventListener('click', function () {

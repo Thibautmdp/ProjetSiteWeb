@@ -33,6 +33,15 @@
     prestations les plus demandées.
   - "Prochain rendez-vous" mis en avant en haut de page.
 
+  CE QUI A ÉTÉ FAIT (2026-09-18)
+  - Correction faille : ce fichier lisait `profiles` directement — la policy
+    RLS qui autorisait ça filtrait des LIGNES (les bons clients) mais pas des
+    COLONNES, donc un select('*') à la main aurait aussi renvoyé l'email de
+    contact et l'uuid auth du client, pas juste prénom/téléphone comme prévu.
+    Lit maintenant `staff_client_contacts`, une vue restreinte à ces deux
+    colonnes (voir salon-odette-schema.sql) — nécessite d'avoir rejoué le
+    schéma à jour dans le SQL Editor Supabase.
+
   CE QU'IL RESTE À FAIRE / IDÉES POUR LA SUITE
   - Filtrer/naviguer l'emploi du temps par semaine (aujourd'hui, tout est
     affiché à plat, du plus proche au plus lointain).
@@ -160,8 +169,10 @@ function loadBookingsAndRender() {
 
     // bookings.user_id référence auth.users, pas profiles directement — PostgREST ne
     // peut donc pas relier les deux tables automatiquement en une seule requête, d'où
-    // ces deux requêtes séparées combinées ici à la main.
-    sb.from('profiles').select('id, prenom, telephone').in('id', userIds).then(function (profilesRes) {
+    // ces deux requêtes séparées combinées ici à la main. On lit `staff_client_contacts`
+    // (une vue restreinte à prenom/telephone, filtrée sur le coiffeur connecté) plutôt
+    // que `profiles` directement — voir salon-odette-schema.sql pour le pourquoi.
+    sb.from('staff_client_contacts').select('id, prenom, telephone').in('id', userIds).then(function (profilesRes) {
       var profilesById = {};
       (profilesRes.data || []).forEach(function (p) { profilesById[p.id] = p; });
       myBookings = bookings.map(function (b) {

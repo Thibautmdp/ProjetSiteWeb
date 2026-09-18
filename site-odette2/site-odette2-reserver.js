@@ -52,6 +52,11 @@
     pré-sélectionne son coiffeur/sa prestation (modifiables) + affiche le
     bandeau de reprogrammation.
 
+  CE QUI A ÉTÉ FAIT (2026-09-18)
+  - Correction bug : même correctif que salon-odette-reservation.js — un
+    créneau du jour même déjà passé n'est plus cliquable (isPastSlot en plus
+    de isPastDay).
+
   CE QU'IL RESTE À FAIRE
   - Comme sur l'originale : durée variable selon la prestation, liste
     d'attente quand un jour est complet.
@@ -224,11 +229,15 @@ function renderCalendarGrid(takenLabels) {
       var slotDate = new Date(d.getTime());
       slotDate.setHours(parseInt(heure, 10), 0, 0, 0);
       var appointmentAtIso = slotDate.toISOString();
+      // isPastDay ne grise que les jours entièrement passés — un créneau du jour même
+      // dont l'heure est déjà passée doit aussi être bloqué ici, sinon on peut réserver
+      // "aujourd'hui 9h00" à 16h.
+      var isPastSlot = slotDate.getTime() < Date.now();
 
-      if (takenLabels[label]) {
+      if (takenLabels[label] || isPastSlot) {
         btn.classList.add('booked');
         btn.disabled = true;
-        btn.setAttribute('aria-label', label + ' — complet');
+        btn.setAttribute('aria-label', label + (takenLabels[label] ? ' — complet' : ' — passé'));
       } else {
         btn.setAttribute('aria-label', label + ' — disponible');
         btn.addEventListener('click', function () {

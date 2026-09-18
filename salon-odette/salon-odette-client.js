@@ -41,6 +41,14 @@
     directement ici — ça permet au calendrier de pré-sélectionner le bon
     coiffeur dès l'ouverture, sans dupliquer cette logique dans ce fichier.
 
+  CE QUI A ÉTÉ FAIT (2026-09-18)
+  - Correction faille : prénom/téléphone/email de contact/libellé de RDV étaient
+    injectés dans innerHTML SANS passer par escapeAttr() (contrairement au
+    formulaire d'édition juste au-dessus, qui l'utilisait déjà) — un client
+    pouvait mettre un script dans son propre prénom et le déclencher en
+    consultant son propre espace (auto-XSS). Toutes ces valeurs passent
+    maintenant par escapeAttr() ici aussi.
+
   CE QU'IL RESTE À FAIRE
   - Recevoir une confirmation par email/SMS après réservation, et un rappel
     avant le rendez-vous (J-1) — nécessite un service tiers d'envoi.
@@ -142,14 +150,16 @@ function renderClientAccount(panel, ids, isModalPanel, prefix) {
 
   // "Coiffeur non précisé" ne devrait apparaître que sur d'anciens RDV créés avant
   // l'ajout de cette colonne (voir salon-odette-schema.sql).
+  // Échappé : label/prestation/coiffeur viennent de `bookings`, où rien n'empêche un
+  // appel direct à l'API Supabase (hors UI) d'y écrire un texte arbitraire.
   function prestaEtCoiffeur(b) {
-    return b.prestation + ' · ' + (b.coiffeur || 'coiffeur non précisé');
+    return escapeAttr(b.prestation) + ' · ' + escapeAttr(b.coiffeur || 'coiffeur non précisé');
   }
 
   var bookingsHtml = upcomingBookings.length
     ? '<div class="booking-list">' + upcomingBookings.map(function (b) {
         return '<div class="booking-list-item">' +
-          '<div><span>' + b.label + '</span> <span class="presta">' + prestaEtCoiffeur(b) + '</span></div>' +
+          '<div><span>' + escapeAttr(b.label) + '</span> <span class="presta">' + prestaEtCoiffeur(b) + '</span></div>' +
           '<div class="booking-actions">' +
             '<button type="button" class="booking-action-btn" data-action="reschedule" data-id="' + b.id + '">Reprogrammer</button>' +
             '<button type="button" class="booking-action-btn" data-action="cancel" data-id="' + b.id + '">Annuler</button>' +
@@ -164,7 +174,7 @@ function renderClientAccount(panel, ids, isModalPanel, prefix) {
   if (!isModalPanel) {
     var pastListHtml = pastBookings.length
       ? '<div class="booking-list">' + pastBookings.map(function (b) {
-          return '<div class="booking-list-item"><div><span>' + b.label + '</span> <span class="presta">' + prestaEtCoiffeur(b) + '</span></div></div>';
+          return '<div class="booking-list-item"><div><span>' + escapeAttr(b.label) + '</span> <span class="presta">' + prestaEtCoiffeur(b) + '</span></div></div>';
         }).join('') + '</div>'
       : '<p class="account-empty">Aucun rendez-vous passé pour l\'instant.</p>';
     historyHtml =
@@ -175,10 +185,10 @@ function renderClientAccount(panel, ids, isModalPanel, prefix) {
   }
 
   panel.innerHTML =
-    '<h3>Bonjour, ' + currentProfile.prenom + '</h3>' +
-    '<p class="account-sub">Compte connecté (' + currentSession.user.email + ').</p>' +
-    '<div class="profile-row"><span class="label">Téléphone</span><span>' + currentProfile.telephone + '</span></div>' +
-    (currentProfile.email ? '<div class="profile-row"><span class="label">Email</span><span>' + currentProfile.email + '</span></div>' : '') +
+    '<h3>Bonjour, ' + escapeAttr(currentProfile.prenom) + '</h3>' +
+    '<p class="account-sub">Compte connecté (' + escapeAttr(currentSession.user.email) + ').</p>' +
+    '<div class="profile-row"><span class="label">Téléphone</span><span>' + escapeAttr(currentProfile.telephone) + '</span></div>' +
+    (currentProfile.email ? '<div class="profile-row"><span class="label">Email</span><span>' + escapeAttr(currentProfile.email) + '</span></div>' : '') +
     (isModalPanel && selectedSlot ? '<div class="form-actions" style="margin-top:18px;"><button type="button" id="' + ids.confirmBtn + '" class="btn btn-primary">' + (reschedulingBooking ? 'Confirmer le nouveau créneau' : 'Confirmer le rendez-vous') + '</button></div>' : '') +
     '<div style="margin-top:20px;"><strong style="font-size:0.9rem;">Vos rendez-vous à venir</strong>' + bookingsHtml + '</div>' +
     historyHtml +
