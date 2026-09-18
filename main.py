@@ -30,6 +30,13 @@ SITES = {
     "vitrine-de-quartier": "vitrine-de-quartier.html",
 }
 
+# Raccourcis acceptés en argument (ex. `site odette2` via site.cmd).
+ALIASES = {
+    "odette": "salon-odette",
+    "odette2": "site-odette2",
+    "vitrine": "vitrine-de-quartier",
+}
+
 
 def choose_site():
     names = list(SITES)
@@ -47,6 +54,7 @@ def choose_site():
 
 def main():
     site = sys.argv[1] if len(sys.argv) > 1 else choose_site()
+    site = ALIASES.get(site, site)
     if site not in SITES:
         sys.exit(f"Site inconnu : {site!r}. Choix possibles : {', '.join(SITES)}")
 
